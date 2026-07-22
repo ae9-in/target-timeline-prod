@@ -1,0 +1,136 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+  name            String
+  roles           Role[]   
+  verticalScope   String[] // e.g. ["Sales"] — empty/null = all verticals
+  mfaSecret       String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  refreshTokens   RefreshToken[]
+}
+
+model Role {
+  id          String @id @default(uuid())
+  name        String @unique // SUPER_ADMIN, SALES_MANAGER, etc.
+  permissions Permission[]
+  users       User[]
+}
+
+model Permission {
+  id       String @id @default(uuid())
+  roleId   String
+  role     Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  resource String // "target", "report", ...
+  action   String // "create","read","update","delete","export"
+  scope    Json?  // { "vertical": "Sales" }
+}
+
+model Target {
+  id            String   @id @default(uuid())
+  name          String
+  vertical      String   // Sales | Production | Hiring
+  owner         String
+  startDate     DateTime
+  deadline      DateTime
+  baseline      Float
+  targetValue   Float
+  currentValue  Float
+  unit          String
+  direction     String   // "up" | "down"
+  createdBy     String
+  updatedAt     DateTime @updatedAt
+  // Gantt extensions
+  wbsParentId   String?
+  progressPct   Float    @default(0)
+  isMilestone   Boolean  @default(false)
+  history       TargetSnapshot[]
+  alerts        Alert[]
+  dependencies  TargetDependency[] @relation("SuccessorDeps")
+  dependents    TargetDependency[] @relation("PredecessorDeps")
+  baselines     TargetBaseline[]
+  wbsParent     Target?  @relation("WbsChildren", fields: [wbsParentId], references: [id])
+  wbsChildren   Target[] @relation("WbsChildren")
+}
+
+model TargetDependency {
+  id            String @id @default(uuid())
+  predecessorId String
+  successorId   String
+  type          String  @default("FS") // "FS" | "SS" | "FF" | "SF"
+  lagDays       Int     @default(0)
+  predecessor   Target  @relation("PredecessorDeps", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor     Target  @relation("SuccessorDeps", fields: [successorId], references: [id], onDelete: Cascade)
+}
+
+model TargetBaseline {
+  id            String   @id @default(uuid())
+  targetId      String
+  target        Target   @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  baselineStart DateTime
+  baselineEnd   DateTime
+  capturedAt    DateTime @default(now())
+  label         String
+}
+
+model TargetSnapshot {
+  id           String   @id @default(uuid())
+  targetId     String
+  target       Target   @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  currentValue Float
+  ragStatus    String
+  capturedAt   DateTime @default(now())
+}
+
+model Alert {
+  id             String   @id @default(uuid())
+  targetId       String
+  target         Target   @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  ragStatus      String
+  gapPoints      Float
+  raisedAt       DateTime @default(now())
+  resolvedAt     DateTime?
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String?
+  action       String
+  resourceType String
+  resourceId   String?
+  before       Json?
+  after        Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String
+  familyId   String   
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  ipAddress  String?
+}
+
+model WeeklyReport {
+  id          String   @id @default(uuid())
+  generatedAt DateTime @default(now())
+  pdfPath     String   
+  summary     Json     // RAG breakdown counts, e.g. { "green": 5, "amber": 2, "red": 1 }
+}
