@@ -302,27 +302,35 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
 
     // Launch Puppeteer to render PDF
     this.logger.log('Launching headless browser to render PDF weekly report...');
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-
-    const page = await browser.newPage();
-    await page.setContent(htmlContent);
-
+    let browser;
     const reportId = `report_${now.getTime()}`;
     const pdfFileName = `${reportId}.pdf`;
     const pdfPath = path.join(this.reportsDir, pdfFileName);
 
-    await page.pdf({
-      path: pdfPath,
-      format: 'A4',
-      margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
-      printBackground: true,
-    });
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
 
-    await browser.close();
-    this.logger.log(`PDF Weekly Report successfully written to ${pdfPath}`);
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+
+      await page.pdf({
+        path: pdfPath,
+        format: 'A4',
+        margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
+        printBackground: true,
+      });
+      this.logger.log(`PDF Weekly Report successfully written to ${pdfPath}`);
+    } catch (error) {
+      this.logger.error('Failed to generate PDF report with Puppeteer:', error);
+      throw error;
+    } finally {
+      if (browser) {
+        await browser.close().catch((err) => this.logger.error('Error closing puppeteer browser:', err));
+      }
+    }
 
     // Save report metadata to database
     const savedReport = await this.prisma.weeklyReport.create({
