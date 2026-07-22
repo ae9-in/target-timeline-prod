@@ -3,17 +3,15 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
 
-const server = express();
+let cachedServer: any;
 
 async function bootstrap() {
-  const isVercel = !!process.env.VERCEL;
+  if (cachedServer) {
+    return cachedServer;
+  }
 
-  const app = isVercel
-    ? await NestFactory.create(AppModule, new ExpressAdapter(server), { logger: ['error', 'warn'] })
-    : await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
+  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
 
   // Security headers
   app.use(helmet());
@@ -37,15 +35,27 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
 
-  if (isVercel) {
-    await app.init();
-  } else {
-    const port = process.env.PORT ?? 3000;
-    await app.listen(port);
-    console.log(`Backend API is running locally on: http://localhost:${port}`);
-  }
+  await app.init();
+  cachedServer = app.getHttpServer();
+  return cachedServer;
 }
 
-bootstrap();
+// For local running
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  bootstrap().then(async (server) => {
+    const port = process.env.PORT ?? 3000;
+    await new Promise<void>((resolve, reject) => {
+      server.listen(port, (err?: any) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+    console.log(`Backend API is running locally on: http://localhost:${port}`);
+  });
+}
 
-export default server;
+// Export default serverless handler for Vercel
+export default async (req: any, res: any) => {
+  const server = await bootstrap();
+  server.emit('request', req, res);
+};
