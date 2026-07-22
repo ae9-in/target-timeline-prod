@@ -197,54 +197,6 @@ export class AuthService {
     // Reset failed login counter on success
     await this.resetLockout(email);
 
-    const roles = user.roles.map(r => r.name);
-    const needsMfa = roles.includes('SUPER_ADMIN') || roles.includes('LEADERSHIP') || user.mfaSecret !== null;
-
-    if (needsMfa) {
-      // Setup MFA if not yet set up
-      if (!user.mfaSecret) {
-        const tempToken = crypto.randomBytes(32).toString('hex');
-        const secret = generateSecret();
-        const encryptedSecret = encrypt(secret, this.mfaEncryptionKey);
-        
-        // Cache secret temporarily in Redis for 10 minutes
-        await this.redis.setex(`mfa_setup:${tempToken}`, 600, JSON.stringify({ userId: user.id, secret: encryptedSecret }));
-        
-        const otpAuthUrl = generateURI({ label: user.email, issuer: 'Targets & Timelines', secret });
-        const qrCodeUrl = await qrcode.toDataURL(otpAuthUrl);
-
-        return {
-          mfaSetupRequired: true,
-          mfaSetupToken: tempToken,
-          qrCode: qrCodeUrl,
-          secretCode: secret,
-        };
-      }
-
-      // Verify MFA code if secret exists
-      if (!mfaCode) {
-        const { privateKey } = getJwtKeys();
-        return {
-          mfaRequired: true,
-          mfaToken: this.jwtService.sign(
-            { sub: user.id, email: user.email, type: 'mfa_pending' },
-            { privateKey, algorithm: 'RS256', expiresIn: '5m' },
-          ),
-        };
-      }
-
-      const decryptedSecret = decrypt(user.mfaSecret, this.mfaEncryptionKey);
-      const isMfaValid = verifySync({
-        token: mfaCode,
-        secret: decryptedSecret,
-      });
-
-      if (!isMfaValid) {
-        if (ip) await this.handleFailedLogin(email, ip);
-        throw new UnauthorizedException('Invalid MFA code');
-      }
-    }
-
     // Track Audit Log
     await this.prisma.auditLog.create({
       data: {
