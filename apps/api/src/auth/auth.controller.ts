@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { Throttle } from '@nestjs/throttler';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -10,19 +12,19 @@ export class AuthController {
   private setRefreshTokenCookie(res: Response, token: string) {
     res.cookie('refreshToken', token, {
       httpOnly: true,
-      secure: true, // Requires HTTPS in production
-      sameSite: 'strict',
+      secure: isProduction,          // false in dev (HTTP), true in prod (HTTPS)
+      sameSite: isProduction ? 'strict' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/auth', // Scoped to /auth path only for security
+      path: '/',                     // Accessible on all paths so /api/auth/refresh works
     });
   }
 
   private clearRefreshTokenCookie(res: Response) {
     res.clearCookie('refreshToken', {
       httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      path: '/auth',
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      path: '/',
     });
   }
 

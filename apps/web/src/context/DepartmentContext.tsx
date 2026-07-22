@@ -20,12 +20,19 @@ interface DepartmentContextType {
 
 const DEFAULT_DEPARTMENTS: Department[] = [];
 
-const STORAGE_KEY = 'targettrack_departments_v2';
+// Bump version whenever a clean slate is needed (removes stale/dummy data from old keys)
+const STORAGE_KEY = 'targettrack_departments_v3';
+const STALE_KEYS = ['targettrack_departments', 'targettrack_departments_v1', 'targettrack_departments_v2'];
 
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 
 export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [departments, setDepartments] = useState<Department[]>(() => {
+    // Clean up any stale keys from previous versions
+    STALE_KEYS.forEach((key) => {
+      try { localStorage.removeItem(key); } catch (_) { /* ignore */ }
+    });
+
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {

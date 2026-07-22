@@ -22,12 +22,38 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create Axios Instance
+// ─── Axios Instance ─────────────────────────────────────────────────────────────
 export const api = axios.create({
   baseURL: '/api',
-  withCredentials: true, // Crucial: sends cookie (refreshToken) to server
+  withCredentials: true,
 });
 
+// ─── Singleton Refresh Promise ──────────────────────────────────────────────────
+// React 18 StrictMode double-invokes effects in development. This causes two
+// simultaneous POST /auth/refresh calls with the same cookie. The server rotates
+// the token on the first call, then the second call arrives with the now-revoked
+// token → "reuse detected" → entire token family killed → user logged out on
+// every page refresh.
+//
+// Fix: maintain a module-level in-flight promise. All concurrent callers (StrictMode
+// second invoke, multiple 401 retries, etc.) share the SAME promise, so only ONE
+// HTTP request ever reaches the server. The promise is cleared after it settles so
+// the next legitimate refresh (e.g. after the 15-min access token expires) works.
+let pendingRefresh: Promise<string> | null = null;
+
+const callRefresh = (): Promise<string> => {
+  if (!pendingRefresh) {
+    pendingRefresh = axios
+      .post<{ accessToken: string }>('/api/auth/refresh', {}, { withCredentials: true })
+      .then((res) => res.data.accessToken)
+      .finally(() => {
+        pendingRefresh = null;
+      });
+  }
+  return pendingRefresh;
+};
+
+// ─── Auth Provider ──────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -35,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const tokenRef = React.useRef<string | null>(null);
 
-  // Set Authorization Header whenever accessToken changes
+  // Keep the axios default header and the ref in sync with state
   useEffect(() => {
     tokenRef.current = accessToken;
     if (accessToken) {
@@ -45,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [accessToken]);
 
-  // Handle Token Interceptors for Request Authorization & Response 401 Retries
+  // Request / response interceptors: bearer token injection + 401 auto-retry
   useEffect(() => {
     const reqInterceptor = api.interceptors.request.use((config) => {
       if (tokenRef.current) {
@@ -62,11 +88,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+        if (
+          error.response?.status === 401 &&
+          !originalRequest._retry &&
+          originalRequest.url !== '/auth/refresh'
+        ) {
           originalRequest._retry = true;
           try {
-            const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-            const token = res.data.accessToken;
+            // Use the singleton so multiple concurrent 401s share one refresh call
+            const token = await callRefresh();
             tokenRef.current = token;
             setAccessToken(token);
 
@@ -84,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         return Promise.reject(error);
-      }
+      },
     );
 
     return () => {
@@ -93,15 +123,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Check login state on mount
+  // Restore session on page load / refresh
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-        setAccessToken(res.data.accessToken);
-        
-        // Fetch current user details or parse them from JWT token
-        const payload = JSON.parse(atob(res.data.accessToken.split('.')[1]));
+        const token = await callRefresh();
+        setAccessToken(token);
+
+        const payload = JSON.parse(atob(token.split('.')[1]));
         setUser({
           id: payload.sub,
           email: payload.email,
@@ -109,12 +138,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           roles: payload.roles,
           verticalScope: payload.verticalScope,
         });
-      } catch (err) {
-        // No valid session, do nothing
+      } catch {
+        // No valid session — stay logged out
       } finally {
         setLoading(false);
       }
     };
+
     checkAuth();
   }, []);
 
@@ -122,7 +152,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await api.post('/auth/login', { email, pass, mfaCode });
     const data = res.data;
 
-    // Handle MFA Setup or MFA Verification required
     if (data.mfaSetupRequired || data.mfaRequired) {
       return data;
     }
