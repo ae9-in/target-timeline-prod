@@ -95,6 +95,9 @@ export class TargetsService {
         currentValue: dto.currentValue,
         unit: dto.unit,
         direction: dto.direction,
+        isMilestone: dto.isMilestone ?? false,
+        wbsParentId: dto.wbsParentId || null,
+        progressPct: dto.progressPct ?? 0,
         createdBy: userId,
       },
     });
@@ -166,6 +169,9 @@ export class TargetsService {
         ...(dto.currentValue !== undefined && { currentValue: dto.currentValue }),
         ...(dto.unit && { unit: dto.unit }),
         ...(dto.direction && { direction: dto.direction }),
+        ...(dto.isMilestone !== undefined && { isMilestone: dto.isMilestone }),
+        ...(dto.wbsParentId !== undefined && { wbsParentId: dto.wbsParentId }),
+        ...(dto.progressPct !== undefined && { progressPct: dto.progressPct }),
       },
     });
 

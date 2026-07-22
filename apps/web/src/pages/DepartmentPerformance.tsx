@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useDepartments } from '../context/DepartmentContext';
 import ReactECharts from 'echarts-for-react';
 
 export const DepartmentPerformance: React.FC = () => {
   const { api } = useAuth();
+  const { departments } = useDepartments();
   const [targets, setTargets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,8 +28,8 @@ export const DepartmentPerformance: React.FC = () => {
     return <div className="text-center" style={{ padding: '40px' }}>Loading performance analytics...</div>;
   }
 
-  // Calculate stats by department
-  const verticals = ['Sales', 'Production', 'Hiring'];
+  // Calculate stats by department dynamically
+  const verticals = departments.map((d) => d.name);
   
   const performanceData = verticals.map(v => {
     const vTargets = targets.filter(t => t.vertical === v);

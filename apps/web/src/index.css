@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   /* Premium Dark Theme Color Palette */
@@ -7,26 +7,28 @@
   --bg-sidebar: #0f1019;
   --border-color: rgba(255, 255, 255, 0.08);
   --border-light: rgba(255, 255, 255, 0.04);
-  
+
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
-  
-  --color-primary: #6366f1; /* Indigo */
+
+  --color-primary: #6366f1;
+  /* Indigo */
   --color-primary-glow: rgba(99, 102, 241, 0.15);
   --color-primary-dark: #4f46e5;
-  --color-accent: #06b6d4; /* Cyan */
+  --color-accent: #06b6d4;
+  /* Cyan */
   --color-accent-glow: rgba(6, 182, 212, 0.15);
 
   /* RAG HSL Tailored Colors */
   --color-rag-green: #10b981;
   --color-rag-green-bg: rgba(16, 185, 129, 0.1);
   --color-rag-green-border: rgba(16, 185, 129, 0.25);
-  
+
   --color-rag-amber: #f59e0b;
   --color-rag-amber-bg: rgba(245, 158, 11, 0.1);
   --color-rag-amber-border: rgba(245, 158, 11, 0.25);
-  
+
   --color-rag-red: #ef4444;
   --color-rag-red-bg: rgba(239, 68, 68, 0.1);
   --color-rag-red-border: rgba(239, 68, 68, 0.25);
@@ -36,11 +38,13 @@
   --border-radius-sm: 8px;
   --border-radius-md: 12px;
   --border-radius-lg: 16px;
-  
+
   box-sizing: border-box;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: inherit;
 }
 
@@ -264,7 +268,7 @@ a {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.01) 0%, rgba(255, 255, 255, 0) 100%);
   pointer-events: none;
 }
 
@@ -495,7 +499,9 @@ a {
   color: var(--text-secondary);
 }
 
-.form-input, .form-select, .form-textarea {
+.form-input,
+.form-select,
+.form-textarea {
   background-color: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-sm);
@@ -507,7 +513,9 @@ a {
   width: 100%;
 }
 
-.form-input:focus, .form-select:focus, .form-textarea:focus {
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
@@ -589,7 +597,7 @@ a {
   position: absolute;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(0,0,0,0) 70%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
   top: -150px;
   left: -150px;
   pointer-events: none;
@@ -599,7 +607,7 @@ a {
   position: absolute;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(0,0,0,0) 70%);
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, rgba(0, 0, 0, 0) 70%);
   bottom: -100px;
   right: -100px;
   pointer-events: none;
@@ -819,14 +827,37 @@ a {
 }
 
 /* Utilities */
-.text-center { text-align: center; }
-.flex { display: flex; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.gap-8 { gap: 8px; }
-.gap-16 { gap: 16px; }
-.mt-16 { margin-top: 16px; }
-.w-full { width: 100%; }
+.text-center {
+  text-align: center;
+}
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.gap-16 {
+  gap: 16px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.w-full {
+  width: 100%;
+}
 
 .mfa-setup-box {
   display: flex;
@@ -849,7 +880,7 @@ a {
 
 .mfa-text-code {
   font-family: monospace;
-  background-color: rgba(255,255,255,0.05);
+  background-color: rgba(255, 255, 255, 0.05);
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 13px;
@@ -996,13 +1027,16 @@ a {
   align-items: center;
   justify-content: center;
 }
+
 .gantt-zoom-btn:last-child {
   border-right: none;
 }
+
 .gantt-zoom-btn:hover {
   background: rgba(99, 102, 241, 0.1);
   color: var(--text-primary);
 }
+
 .gantt-zoom-btn.active {
   background: var(--color-primary);
   color: #fff;
@@ -1018,6 +1052,7 @@ a {
   outline: none;
   transition: border-color 0.15s ease;
 }
+
 .gantt-select:focus {
   border-color: var(--color-primary);
 }
@@ -1037,15 +1072,18 @@ a {
   transition: all 0.15s ease;
   white-space: nowrap;
 }
+
 .gantt-toggle-btn:hover {
   border-color: var(--color-primary);
   color: var(--text-primary);
 }
+
 .gantt-toggle-btn.active {
   background: var(--color-primary-glow);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+
 .gantt-toggle-btn.active.critical {
   background: rgba(239, 68, 68, 0.15);
   border-color: var(--color-rag-red);
@@ -1066,6 +1104,7 @@ a {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+
 .gantt-action-btn:hover {
   background: var(--color-accent-glow);
   border-color: var(--color-accent);
@@ -1077,11 +1116,13 @@ a {
   display: flex;
   align-items: center;
 }
+
 .gantt-search-icon {
   position: absolute;
   left: 10px;
   color: var(--text-muted);
 }
+
 .gantt-search-input {
   height: 32px;
   box-sizing: border-box;
@@ -1096,18 +1137,40 @@ a {
   width: 180px;
   transition: all 0.15s ease;
 }
+
 .gantt-search-input:focus {
   border-color: var(--color-primary);
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* â”€â”€ Container Layout (Single Viewport) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Strict Flex Layout Containment for Timeline & App Layout */
+.main-wrapper {
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.gantt-page-root {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Main Gantt Grid Container */
 .gantt-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
   background: var(--bg-surface);
   position: relative;
 }
@@ -1116,6 +1179,8 @@ a {
 .gantt-header-row {
   display: flex;
   height: 50px;
+  width: 100% !important;
+  max-width: 100% !important;
   border-bottom: 2px solid var(--border-color);
   background: #0f1019;
   flex-shrink: 0;
@@ -1123,8 +1188,11 @@ a {
 }
 
 .gantt-chart-header-scroll {
-  flex-grow: 1;
-  overflow: hidden;
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
   background: #0f1019;
   display: flex;
   position: relative;
@@ -1154,31 +1222,48 @@ a {
   color: var(--text-muted);
   text-transform: uppercase;
 }
+
 .gantt-tick-label-bottom {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
-/* â”€â”€ Body Container (Parent is fixed, Child handles both X & Y scrolls) â”€â”€â”€â”€ */
+/* Body Container (Parent is fixed, Child handles both X & Y scrolls) */
 .gantt-body-row {
   display: flex;
   flex: 1;
   min-height: 0;
-  overflow: hidden; /* Fix: parent does not scroll, preventing scrollbar cutoff */
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
   position: relative;
 }
 
 /* Scrollable Canvas Body */
 .gantt-chart-body-scroll {
-  flex: 1;
-  min-width: 0;
-  overflow: auto; /* Fix: enable horizontal and vertical scrollbars natively */
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
   position: relative;
   background: #111218;
-  /* Premium high-contrast scrollbars */
   scrollbar-width: auto;
   scrollbar-color: rgba(255, 255, 255, 0.35) #0f1019;
+}
+
+/* Sticky Left Task Sidebar */
+.gantt-compact-strip {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 20 !important;
+  flex-shrink: 0 !important;
+  width: 240px !important;
+  background: #0f1019 !important;
+  border-right: 1px solid var(--border-color) !important;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.4);
 }
 
 /* Webkit Scrollbars Custom Premium Styling */
@@ -1186,15 +1271,19 @@ a {
   height: 12px;
   width: 12px;
 }
+
 .gantt-chart-body-scroll::-webkit-scrollbar-track {
   background: #0f1019;
   border-top: 1px solid var(--border-color);
 }
+
 .gantt-chart-body-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3);
   border-radius: 6px;
-  border: 3px solid #0f1019; /* padding effect */
+  border: 3px solid #0f1019;
+  /* padding effect */
 }
+
 .gantt-chart-body-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
@@ -1211,10 +1300,12 @@ a {
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-light);
 }
+
 .gantt-chart-row.group-row {
   background: rgba(99, 102, 241, 0.04);
   border-bottom: 1px solid rgba(99, 102, 241, 0.15);
 }
+
 .gantt-chart-row.ghost-row {
   background: transparent !important;
 }
@@ -1232,6 +1323,7 @@ a {
   flex-direction: column;
   user-select: none;
 }
+
 .gantt-compact-row {
   height: 44px;
   display: flex;
@@ -1247,15 +1339,18 @@ a {
   box-sizing: border-box;
   background: #0f1019;
 }
+
 .gantt-compact-row.group-row {
   background: rgba(99, 102, 241, 0.12);
   font-weight: 700;
   color: var(--color-primary);
   border-bottom: 1px solid rgba(99, 102, 241, 0.2);
 }
+
 .gantt-compact-row.ghost-row {
   opacity: 0.35;
 }
+
 .gantt-compact-row.ghost-row:hover {
   opacity: 0.8;
 }
@@ -1295,9 +1390,11 @@ a {
   transition: opacity 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease;
   z-index: 5;
 }
+
 .gantt-task-bar-wrapper:active {
   cursor: grabbing;
 }
+
 .gantt-task-bar-wrapper.critical {
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
   border: 1px solid #ef4444 !important;
@@ -1309,6 +1406,7 @@ a {
   box-shadow: 0 0 18px var(--color-accent-glow);
   z-index: 15;
 }
+
 .gantt-task-bar-wrapper.search-dimmed {
   opacity: 0.25;
 }
@@ -1386,6 +1484,7 @@ a {
 .gantt-milestone-marker {
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
+
 .gantt-milestone-marker:hover {
   transform: translateY(-50%) rotate(45deg) scale(1.15) !important;
   box-shadow: 0 0 12px var(--color-accent) !important;
@@ -1402,6 +1501,7 @@ a {
   opacity: 0;
   transition: opacity 0.15s;
 }
+
 .gantt-task-bar-wrapper:hover .gantt-task-bar-progress-handle {
   opacity: 1;
 }
@@ -1418,6 +1518,7 @@ a {
   opacity: 0;
   transition: opacity 0.15s;
 }
+
 .gantt-task-bar-wrapper:hover .gantt-task-bar-resize-handle {
   opacity: 1;
 }
@@ -1432,12 +1533,14 @@ a {
   pointer-events: none;
   z-index: 8;
 }
+
 .gantt-dependency-line {
   stroke: rgba(148, 163, 184, 0.25);
   stroke-width: 1.5;
   fill: none;
   transition: stroke 0.15s ease, stroke-width 0.15s ease;
 }
+
 .gantt-dependency-line:hover,
 .gantt-dependency-line.active {
   stroke: var(--color-accent);
@@ -1468,12 +1571,15 @@ a {
   cursor: pointer;
   transition: background 0.1s ease;
 }
+
 .gantt-context-menu-item:hover {
   background: rgba(255, 255, 255, 0.05);
 }
+
 .gantt-context-menu-item.danger {
   color: #ef4444;
 }
+
 .gantt-context-menu-item.danger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
@@ -1507,9 +1613,11 @@ a {
   transition: background 0.1s ease;
   user-select: none;
 }
+
 .gantt-dropdown-item:hover {
   background: rgba(255, 255, 255, 0.05);
 }
+
 .gantt-dropdown-item input[type="checkbox"] {
   cursor: pointer;
 }
@@ -1562,6 +1670,7 @@ a {
   outline: none;
   width: 100%;
 }
+
 .gantt-quick-create-row input:focus,
 .gantt-quick-create-row select:focus {
   border-color: var(--color-primary);
@@ -1585,19 +1694,23 @@ a {
   align-items: center;
   justify-content: center;
 }
+
 .gantt-quick-create-btn.cancel {
   background: transparent;
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
 }
+
 .gantt-quick-create-btn.cancel:hover {
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
+
 .gantt-quick-create-btn.save {
   background: var(--color-primary);
   color: #fff;
   border: none;
 }
+
 .gantt-quick-create-btn.save:hover {
   background: var(--color-primary-hover, #4f46e5);
 }
@@ -1613,6 +1726,7 @@ a {
   align-items: center;
   gap: 4px;
 }
+
 .gantt-chart-row.ghost-row:hover .gantt-add-affordance-text {
   opacity: 1;
 }
@@ -1677,6 +1791,7 @@ a {
   margin-top: 4px;
   color: var(--text-secondary);
 }
+
 .gantt-tooltip-row span:last-child {
   color: var(--text-primary);
   font-weight: 500;
@@ -1707,14 +1822,25 @@ a {
   border-radius: 3px;
   flex-shrink: 0;
 }
-.gantt-legend-dot.green { background: #10b981; }
-.gantt-legend-dot.amber { background: #f59e0b; }
-.gantt-legend-dot.red { background: #ef4444; }
+
+.gantt-legend-dot.green {
+  background: #10b981;
+}
+
+.gantt-legend-dot.amber {
+  background: #f59e0b;
+}
+
+.gantt-legend-dot.red {
+  background: #ef4444;
+}
+
 .gantt-legend-dot.critical {
   background: transparent;
   border: 2px solid #ef4444;
   box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
 }
+
 .gantt-legend-dot.baseline {
   background: rgba(148, 163, 184, 0.2);
   border: 1px dashed rgba(148, 163, 184, 0.5);
@@ -1739,6 +1865,191 @@ a {
   border-radius: 50%;
   animation: gantt-spin 0.8s linear infinite;
 }
+
 @keyframes gantt-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
+
+/* Custom Scrollbar styling for permanent visibility */
+.gantt-custom-scrollbar-container {
+  overflow-x: scroll !important;
+  overflow-y: hidden !important;
+  height: 18px !important;
+  background: var(--bg-sidebar) !important;
+  border-top: 1px solid var(--border-color) !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+}
+
+.gantt-custom-scrollbar-container::-webkit-scrollbar {
+  height: 8px !important;
+  display: block !important;
+}
+
+.gantt-custom-scrollbar-container::-webkit-scrollbar-track {
+  background: var(--bg-sidebar) !important;
+}
+
+.gantt-custom-scrollbar-container::-webkit-scrollbar-thumb {
+  background: var(--text-muted) !important;
+  border-radius: 4px !important;
+}
+
+.gantt-custom-scrollbar-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent) !important;
+}
+
+/* Enable native horizontal and vertical scrollbars with premium styling */
+.gantt-chart-body-scroll {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--color-accent, #06b6d4) var(--bg-sidebar, #0f1019) !important;
+}
+
+.gantt-chart-body-scroll::-webkit-scrollbar {
+  height: 12px !important;
+  width: 12px !important;
+  display: block !important;
+}
+
+.gantt-chart-body-scroll::-webkit-scrollbar-track {
+  background: var(--bg-sidebar, #0f1019) !important;
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
+}
+
+.gantt-chart-body-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-accent, #06b6d4) !important;
+  border-radius: 6px !important;
+  border: 2px solid var(--bg-sidebar, #0f1019) !important;
+}
+
+.gantt-chart-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: #22d3ee !important;
+}
+
+.gantt-chart-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Footer Hint Text styling to prevent clipping */
+.gantt-legend-info-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 500px;
+}
+
+@media (max-width: 1600px) {
+  .gantt-legend-info-hint {
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .gantt-legend-info-hint {
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .gantt-legend-info-hint {
+    max-width: 200px;
+  }
+}
+
+/* ─── Gantt Scrubber Native Input Range Styles ────────────────────────────── */
+.gantt-scrubber {
+  position: relative;
+  height: 40px;
+  width: 100%;
+}
+
+.gantt-scrubber-track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-surface, #1f2632);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+}
+
+.gantt-scrubber-marker {
+  position: absolute;
+  top: 40%;
+  height: 20%;
+  border-radius: 2px;
+  opacity: 0.9;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gantt-scrubber-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-accent, #06b6d4);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gantt-scrubber-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 16px;
+  background: rgba(91, 141, 239, 0.18);
+  border: 1px solid var(--color-accent, #06b6d4);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* The actual interactive element stretched over the whole track.
+   z-index: 10 ensures it sits cleanly above all visual layers. */
+.gantt-scrubber-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: grab;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: pan-x;
+  z-index: 10;
+  pointer-events: auto;
+}
+.gantt-scrubber-input:active {
+  cursor: grabbing;
+}
+.gantt-scrubber-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 40px;
+  background: transparent;
+  cursor: grab;
+}
+.gantt-scrubber-input::-moz-range-thumb {
+  width: 24px;
+  height: 40px;
+  background: transparent;
+  border: none;
+  cursor: grab;
+}
+.gantt-scrubber-input::-webkit-slider-runnable-track {
+  background: transparent;
+}
+.gantt-scrubber-input::-moz-range-track {
+  background: transparent;
+}

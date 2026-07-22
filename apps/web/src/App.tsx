@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { DepartmentProvider } from './context/DepartmentContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Login } from './pages/Login';
@@ -10,6 +11,7 @@ import { TargetDetails } from './pages/TargetDetails';
 import { Timeline } from './pages/Timeline';
 import { Calendar } from './pages/Calendar';
 import { DepartmentPerformance } from './pages/DepartmentPerformance';
+import { DepartmentManagement } from './pages/DepartmentManagement';
 import { Analytics } from './pages/Analytics';
 import { Alerts } from './pages/Alerts';
 import { WeeklyReports } from './pages/WeeklyReports';
@@ -62,7 +64,9 @@ const AppContent: React.FC = () => {
           <Route path="/targets" element={<MasterTargetTracker />} />
           <Route path="/targets/:id" element={<TargetDetails />} />
           <Route path="/timeline" element={<Timeline />} />
+
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/departments" element={<DepartmentManagement />} />
           <Route path="/performance" element={<DepartmentPerformance />} />
           
           {/* Protected Routes */}
@@ -86,9 +90,11 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <DepartmentProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </DepartmentProvider>
     </AuthProvider>
   );
 }

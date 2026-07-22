@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Create Axios Instance
 export const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: '/api',
   withCredentials: true, // Crucial: sends cookie (refreshToken) to server
 });
 
@@ -33,8 +33,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const tokenRef = React.useRef<string | null>(null);
+
   // Set Authorization Header whenever accessToken changes
   useEffect(() => {
+    tokenRef.current = accessToken;
     if (accessToken) {
       api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
     } else {
@@ -42,22 +45,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [accessToken]);
 
-  // Handle Token Refresh Interceptor
+  // Handle Token Interceptors for Request Authorization & Response 401 Retries
   useEffect(() => {
-    const interceptor = api.interceptors.response.use(
+    const reqInterceptor = api.interceptors.request.use((config) => {
+      if (tokenRef.current) {
+        if (config.headers && typeof config.headers.set === 'function') {
+          config.headers.set('Authorization', `Bearer ${tokenRef.current}`);
+        } else if (config.headers) {
+          config.headers['Authorization'] = `Bearer ${tokenRef.current}`;
+        }
+      }
+      return config;
+    });
+
+    const resInterceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
         if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
           originalRequest._retry = true;
           try {
-            const res = await axios.post('http://localhost:3000/auth/refresh', {}, { withCredentials: true });
+            const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
             const token = res.data.accessToken;
+            tokenRef.current = token;
             setAccessToken(token);
-            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+
+            if (originalRequest.headers && typeof originalRequest.headers.set === 'function') {
+              originalRequest.headers.set('Authorization', `Bearer ${token}`);
+            } else if (originalRequest.headers) {
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            }
             return api(originalRequest);
           } catch (refreshError) {
-            // Refresh token expired or invalid, log out
+            tokenRef.current = null;
             setAccessToken(null);
             setUser(null);
             return Promise.reject(refreshError);
@@ -68,7 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     return () => {
-      api.interceptors.response.eject(interceptor);
+      api.interceptors.request.eject(reqInterceptor);
+      api.interceptors.response.eject(resInterceptor);
     };
   }, []);
 
@@ -76,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await axios.post('http://localhost:3000/auth/refresh', {}, { withCredentials: true });
+        const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
         setAccessToken(res.data.accessToken);
         
         // Fetch current user details or parse them from JWT token

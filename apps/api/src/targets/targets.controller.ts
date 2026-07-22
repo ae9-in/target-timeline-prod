@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Body,
@@ -93,6 +94,7 @@ export class TargetsController {
     return this.targetsService.create(createTargetDto, userId, ip || 'Unknown');
   }
 
+  @Put(':id')
   @Patch(':id')
   @RequirePermission('target', 'update')
   async update(

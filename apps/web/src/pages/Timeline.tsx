@@ -6,19 +6,22 @@ import {
   Download, FileText, Search,
   RotateCcw, SlidersHorizontal, Calendar,
   ChevronDown, ChevronRight, ChevronLeft,
-  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2
+  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2, Sliders, X,
+  Crosshair
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDepartments } from '../context/DepartmentContext';
 import { useGanttData } from '../hooks/useGanttData';
-import { targetsToCSV } from '../utils/gantt-transform';
-import type { GanttTarget } from '../utils/gantt-transform';
+import type { GanttTarget, ZoomLevelConfig } from '../utils/gantt-transform';
+import { targetsToCSV, computeDateScale } from '../utils/gantt-transform';
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ROW_HEIGHT = 44;
 
 type GroupBy = 'none' | 'vertical' | 'owner';
 type FilterRAG = 'ALL' | 'GREEN' | 'AMBER' | 'RED';
-type ViewMode = 'Day' | 'Week' | 'Month' | 'Quarter' | 'Year';
+type ViewMode = 'Day' | 'Week' | 'Month' | 'Quarter' | 'Year' | 'Custom';
 
 interface GanttRow {
   type: 'group' | 'task' | 'ghost';
@@ -34,6 +37,7 @@ interface GanttRow {
 // ─── Main Timeline Component ──────────────────────────────────────────────────
 export const Timeline: React.FC = () => {
   const { api, user } = useAuth();
+  const { departments } = useDepartments();
   const navigate = useNavigate();
 
   // Settings / filters
@@ -46,8 +50,44 @@ export const Timeline: React.FC = () => {
   const [filterCriticalOnly, setFilterCriticalOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Custom range states
+  const [customStart, setCustomStart] = useState<Date | null>(null);
+  const [customEnd, setCustomEnd] = useState<Date | null>(null);
+
+  // Quarter view states (persisted in localStorage)
+  const [quarterCount, setQuarterCount] = useState<number>(() => {
+    const saved = localStorage.getItem('gantt_quarter_count');
+    return saved ? parseInt(saved, 10) : 4;
+  });
+  const [quarterLength, setQuarterLength] = useState<number>(() => {
+    const saved = localStorage.getItem('gantt_quarter_length');
+    return saved ? parseInt(saved, 10) : 3;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('gantt_quarter_count', quarterCount.toString());
+  }, [quarterCount]);
+  useEffect(() => {
+    localStorage.setItem('gantt_quarter_length', quarterLength.toString());
+  }, [quarterLength]);
+
+  // Viewport navigation start state
+  const [viewportStart, setViewportStart] = useState<Date>(() => new Date());
+
+  // Dynamic canvas width state
+  const [canvasWidthPx, setCanvasWidthPx] = useState<number>(800);
+
+  // Custom date picker popup
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [tempCustomStart, setTempCustomStart] = useState('');
+  const [tempCustomEnd, setTempCustomEnd] = useState('');
+
+  // Track if viewport has initialized based on first target date
+  const [hasInitializedViewport, setHasInitializedViewport] = useState(false);
+
   // View Options dropdown popover menu
   const [showViewMenu, setShowViewMenu] = useState(false);
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false);
 
   // Optional Left scannable index strip (off by default)
   const [showCompactStrip, setShowCompactStrip] = useState(false);
@@ -77,7 +117,16 @@ export const Timeline: React.FC = () => {
   // Quick Create Fields
   const [qcName, setQcName] = useState('');
   const [qcOwner, setQcOwner] = useState(user?.name || '');
-  const [qcVertical, setQcVertical] = useState('Sales');
+  const [qcVertical, setQcVertical] = useState(() => departments[0]?.name || '');
+  const [qcError, setQcError] = useState<string | null>(null);
+
+  // Edit Target & Progress Modal State
+  const [editTargetModal, setEditTargetModal] = useState<GanttTarget | null>(null);
+  const [editValue, setEditValue] = useState<number>(0);
+  const [editStartDate, setEditStartDate] = useState<string>('');
+  const [editDeadline, setEditDeadline] = useState<string>('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState<boolean>(false);
 
   // Drag-to-create state
   const [dragCreate, setDragCreate] = useState<{
@@ -134,6 +183,7 @@ export const Timeline: React.FC = () => {
   // Scroll Sync Refs
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyHorizontalScrollRef = useRef<HTMLDivElement>(null);
+  const ganttContainerRef = useRef<HTMLDivElement>(null);
 
   // Hook to pull data
   const { targets, criticalIds, loading, error, refresh } = useGanttData(api);
@@ -147,7 +197,47 @@ export const Timeline: React.FC = () => {
     }
   }, [targets]);
 
-  // Sync scroll left
+  // Sync viewport start once based on first target date
+  useEffect(() => {
+    if (targets && targets.length > 0 && !hasInitializedViewport) {
+      const starts = targets.map(t => new Date(t.startDate).getTime());
+      const minStart = new Date(Math.min(...starts));
+      setViewportStart(new Date(minStart.getFullYear(), minStart.getMonth(), 1));
+      setHasInitializedViewport(true);
+    }
+  }, [targets, hasInitializedViewport]);
+
+  // Click outside to close menus
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setShowViewMenu(false);
+      setShowOverflowMenu(false);
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // Dedicated ResizeObserver on the actual outermost gantt container to drive canvasWidthPx
+  useEffect(() => {
+    const container = ganttContainerRef.current;
+    if (!container) return;
+
+    const handleResize = (entries: ResizeObserverEntry[]) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        if (width > 0) {
+          const actualCanvasWidth = showCompactStrip ? Math.max(100, width - 200) : width;
+          setCanvasWidthPx(actualCanvasWidth);
+        }
+      }
+    };
+
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [showCompactStrip]);
+
+  // Sync scroll left from body
   const handleHorizontalScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const sl = e.currentTarget.scrollLeft;
     setScrollLeft(sl);
@@ -156,86 +246,202 @@ export const Timeline: React.FC = () => {
     }
   }, []);
 
-  // Keyboard navigation scroll controls
+  // Non-passive wheel event listener to allow preventDefault for horizontal panning without browser warning
+  useEffect(() => {
+    const el = bodyHorizontalScrollRef.current;
+    if (!el) return;
+
+    const handleWheelNative = (e: WheelEvent) => {
+      const isHorizontalSwipe = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      if (e.shiftKey || isHorizontalSwipe) {
+        e.preventDefault();
+        const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY;
+        el.scrollLeft += delta;
+      }
+    };
+
+    el.addEventListener('wheel', handleWheelNative, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheelNative);
+  }, []);
+
+  // Keyboard navigation scroll controls (pages by one period width)
   const handleScrollLeft = () => {
-    if (bodyHorizontalScrollRef.current) {
-      bodyHorizontalScrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    if (viewMode === 'Month' || viewMode === 'Week' || viewMode === 'Year') {
+      setViewportStart(prev => new Date(prev.getFullYear() - 1, prev.getMonth(), prev.getDate()));
+    } else if (viewMode === 'Quarter') {
+      const qLen = quarterLength || 3;
+      setViewportStart(prev => new Date(prev.getFullYear(), prev.getMonth() - qLen, prev.getDate()));
+    } else {
+      if (bodyHorizontalScrollRef.current) {
+        bodyHorizontalScrollRef.current.scrollBy({ left: -colWidthPx, behavior: 'smooth' });
+      }
     }
   };
 
   const handleScrollRight = () => {
-    if (bodyHorizontalScrollRef.current) {
-      bodyHorizontalScrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    if (viewMode === 'Month' || viewMode === 'Week' || viewMode === 'Year') {
+      setViewportStart(prev => new Date(prev.getFullYear() + 1, prev.getMonth(), prev.getDate()));
+    } else if (viewMode === 'Quarter') {
+      const qLen = quarterLength || 3;
+      setViewportStart(prev => new Date(prev.getFullYear(), prev.getMonth() + qLen, prev.getDate()));
+    } else {
+      if (bodyHorizontalScrollRef.current) {
+        bodyHorizontalScrollRef.current.scrollBy({ left: colWidthPx, behavior: 'smooth' });
+      }
     }
   };
 
   // ── Date Scale Calculations ─────────────────────────────────────────────────
-  const timelineDates = useMemo(() => {
-    if (localTargets.length === 0) {
-      const today = new Date();
-      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const end = new Date(today.getFullYear(), today.getMonth() + 2, 1);
-      return { start, end };
+  const zoomConfigs = useMemo<Record<ViewMode, ZoomLevelConfig>>(() => ({
+    Day: {
+      unit: 'day',
+      columnMinWidthPx: 32,
+      alignment: 'none',
+      defaultPeriodCount: 30,
+    },
+    Week: {
+      unit: 'week',
+      columnMinWidthPx: 70,
+      alignment: 'calendarYear',
+      defaultPeriodCount: 53,
+    },
+    Month: {
+      unit: 'month',
+      columnMinWidthPx: 100,
+      alignment: 'calendarYear',
+      defaultPeriodCount: 12,
+    },
+    Quarter: {
+      unit: 'quarter',
+      columnMinWidthPx: 120,
+      alignment: 'calendarQuarter',
+      defaultPeriodCount: 4,
+      periodCount: quarterCount,
+      periodLengthMonths: quarterLength,
+    },
+    Year: {
+      unit: 'year',
+      columnMinWidthPx: 150,
+      alignment: 'calendarYear',
+      defaultPeriodCount: 3,
+    },
+    Custom: {
+      unit: 'custom',
+      columnMinWidthPx: 100,
+      alignment: 'none',
+      defaultPeriodCount: 10,
+      customStart,
+      customEnd,
     }
+  }), [quarterCount, quarterLength, customStart, customEnd]);
 
-    const starts = localTargets.map(t => new Date(t.startDate).getTime());
-    const ends = localTargets.map(t => new Date(t.deadline).getTime());
+  // Full task range spanning full calendar year(s) from Week 1 (Jan 1) to Week 52 (Dec 31)
+  const fullTaskRange = useMemo(() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    if (localTargets.length === 0) {
+      // Provide 3 years of runway so users can plan ahead without hitting blank canvas
+      return {
+        start: new Date(currentYear - 1, 0, 1),
+        end: new Date(currentYear + 2, 11, 31)
+      };
+    }
+    const starts = localTargets.map(t => new Date(t.startDate).getFullYear());
+    const ends = localTargets.map(t => new Date(t.deadline).getFullYear());
+    const minYear = Math.min(...starts, currentYear);
+    const maxYear = Math.max(...ends, currentYear);
 
-    const minStart = new Date(Math.min(...starts));
-    const maxEnd = new Date(Math.max(...ends));
-
-    const start = new Date(minStart.getFullYear(), minStart.getMonth() - 1, 1);
-    const end = new Date(maxEnd.getFullYear(), maxEnd.getMonth() + 2, 1);
-
-    return { start, end };
+    return {
+      start: new Date(minYear, 0, 1),
+      end: new Date(maxYear, 11, 31)
+    };
   }, [localTargets]);
 
-  const totalDays = useMemo(() => {
-    const diff = timelineDates.end.getTime() - timelineDates.start.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  }, [timelineDates]);
+  // Single date scale computation
+  const dateScale = useMemo(() => {
+    const config = {
+      ...zoomConfigs[viewMode],
+      fullRange: fullTaskRange
+    };
+    return computeDateScale(config, viewportStart, canvasWidthPx);
+  }, [viewMode, viewportStart, canvasWidthPx, zoomConfigs, fullTaskRange]);
 
-  const pixelsPerDay = useMemo(() => {
-    switch (viewMode) {
-      case 'Day': return 32;
-      case 'Week': return 8;
-      case 'Month': return 2.5;
-      case 'Quarter': return 0.8;
-      case 'Year': return 0.2;
-      default: return 8;
-    }
-  }, [viewMode]);
+
+  const colWidthPx = useMemo(() => {
+    return dateScale.columns[0]?.widthPx ?? 100;
+  }, [dateScale]);
 
   const totalTimelineWidth = useMemo(() => {
-    return totalDays * pixelsPerDay;
-  }, [totalDays, pixelsPerDay]);
+    return dateScale.columns.length * colWidthPx;
+  }, [dateScale, colWidthPx]);
 
-  const dateToX = useCallback((d: Date) => {
-    const diff = d.getTime() - timelineDates.start.getTime();
-    const days = diff / (1000 * 60 * 60 * 24);
-    return days * pixelsPerDay;
-  }, [timelineDates, pixelsPerDay]);
+  const dateToX = useCallback((d: Date | string) => {
+    const dateObj = typeof d === 'string' ? new Date(d) : d;
+    const t = dateObj.getTime();
+    const startMs = dateScale.rangeStart.getTime();
+    const endMs = dateScale.rangeEnd.getTime();
+
+    if (t <= startMs) return 0;
+    if (t >= endMs) return dateScale.columns.length * colWidthPx;
+
+    // Fast search using binary search
+    let low = 0;
+    let high = dateScale.columns.length - 1;
+    while (low <= high) {
+      const mid = (low + high) >> 1;
+      const col = dateScale.columns[mid];
+      const colStartMs = col.start.getTime();
+      const colEndMs = col.end.getTime();
+
+      if (t >= colStartMs && t < colEndMs) {
+        const fraction = (t - colStartMs) / (colEndMs - colStartMs);
+        return col.xPx + fraction * col.widthPx;
+      } else if (t < colStartMs) {
+        high = mid - 1;
+      } else {
+        low = mid + 1;
+      }
+    }
+    return 0;
+  }, [dateScale, colWidthPx]);
 
   const xToDate = useCallback((x: number) => {
-    const days = x / pixelsPerDay;
-    const ms = days * 24 * 60 * 60 * 1000;
-    return new Date(timelineDates.start.getTime() + ms);
-  }, [timelineDates, pixelsPerDay]);
+    const startMs = dateScale.rangeStart.getTime();
+    const endMs = dateScale.rangeEnd.getTime();
+    if (x <= 0) return new Date(startMs);
+    const totalWidth = dateScale.columns.length * colWidthPx;
+    if (x >= totalWidth) return new Date(endMs);
+
+    const colIndex = Math.floor(x / colWidthPx);
+    const col = dateScale.columns[colIndex];
+    if (col) {
+      const fraction = (x - col.xPx) / col.widthPx;
+      const colDuration = col.end.getTime() - col.start.getTime();
+      return new Date(col.start.getTime() + fraction * colDuration);
+    }
+    return new Date(startMs);
+  }, [dateScale, colWidthPx]);
 
   // Today marker
   const todayX = useMemo(() => {
     const today = new Date();
-    if (today < timelineDates.start || today > timelineDates.end) return null;
+    if (today < dateScale.rangeStart || today > dateScale.rangeEnd) return null;
     return dateToX(today);
-  }, [timelineDates, dateToX]);
+  }, [dateScale.rangeStart, dateScale.rangeEnd, dateToX]);
 
-  // Weekend Bands
+  // Weekend Bands (disabled at Month/Quarter/Year coarser zooms)
   const weekendBands = useMemo(() => {
     const bands: Array<{ left: number; width: number }> = [];
-    if (viewMode === 'Year' || viewMode === 'Quarter') return bands;
+    if (
+      dateScale.resolvedUnit === 'month' ||
+      dateScale.resolvedUnit === 'quarter' ||
+      dateScale.resolvedUnit === 'year'
+    ) {
+      return bands;
+    }
 
-    const current = new Date(timelineDates.start);
-    while (current < timelineDates.end) {
+    const current = new Date(dateScale.rangeStart);
+    while (current < dateScale.rangeEnd) {
       const day = current.getDay();
       if (day === 6 || day === 0) {
         const left = dateToX(current);
@@ -246,93 +452,11 @@ export const Timeline: React.FC = () => {
       current.setDate(current.getDate() + 1);
     }
     return bands;
-  }, [timelineDates, dateToX, viewMode]);
+  }, [dateScale, dateToX]);
 
-  // Timeline header ticks
-  const headerTicks = useMemo(() => {
-    const ticks: Array<{ left: number; width: number; topLabel: string; bottomLabel: string }> = [];
-    const current = new Date(timelineDates.start);
 
-    if (viewMode === 'Day') {
-      while (current < timelineDates.end) {
-        const left = dateToX(current);
-        const next = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
-        const width = dateToX(next) - left;
-        ticks.push({
-          left,
-          width,
-          topLabel: current.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          bottomLabel: current.getDate().toString()
-        });
-        current.setDate(current.getDate() + 1);
-      }
-    } else if (viewMode === 'Week') {
-      const day = current.getDay();
-      current.setDate(current.getDate() - day);
-      while (current < timelineDates.end) {
-        const left = dateToX(current);
-        const next = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 7);
-        const width = dateToX(next) - left;
-        const d = new Date(Date.UTC(current.getFullYear(), current.getMonth(), current.getDate()));
-        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 
-        ticks.push({
-          left,
-          width,
-          topLabel: current.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          bottomLabel: `W${weekNo}`
-        });
-        current.setDate(current.getDate() + 7);
-      }
-    } else if (viewMode === 'Month') {
-      current.setDate(1);
-      while (current < timelineDates.end) {
-        const left = dateToX(current);
-        const next = new Date(current.getFullYear(), current.getMonth() + 1, 1);
-        const width = dateToX(next) - left;
-        ticks.push({
-          left,
-          width,
-          topLabel: current.getFullYear().toString(),
-          bottomLabel: current.toLocaleDateString('en-US', { month: 'short' })
-        });
-        current.setMonth(current.getMonth() + 1);
-      }
-    } else if (viewMode === 'Quarter') {
-      const qMonth = Math.floor(current.getMonth() / 3) * 3;
-      current.setMonth(qMonth, 1);
-      while (current < timelineDates.end) {
-        const left = dateToX(current);
-        const next = new Date(current.getFullYear(), current.getMonth() + 3, 1);
-        const width = dateToX(next) - left;
-        ticks.push({
-          left,
-          width,
-          topLabel: current.getFullYear().toString(),
-          bottomLabel: `Q${Math.floor(current.getMonth() / 3) + 1}`
-        });
-        current.setMonth(current.getMonth() + 3);
-      }
-    } else if (viewMode === 'Year') {
-      current.setMonth(0, 1);
-      while (current < timelineDates.end) {
-        const left = dateToX(current);
-        const next = new Date(current.getFullYear() + 1, 0, 1);
-        const width = dateToX(next) - left;
-        ticks.push({
-          left,
-          width,
-          topLabel: '',
-          bottomLabel: current.getFullYear().toString()
-        });
-        current.setFullYear(current.getFullYear() + 1);
-      }
-    }
 
-    return ticks;
-  }, [timelineDates, viewMode, dateToX]);
 
   // ── Filter & Group Data ─────────────────────────────────────────────────────
   const filteredTargets = useMemo(() => {
@@ -478,6 +602,10 @@ export const Timeline: React.FC = () => {
     return () => observer.disconnect();
   }, [updateGhostRows]);
 
+  useEffect(() => {
+    updateGhostRows();
+  }, [showCompactStrip, updateGhostRows]);
+
   // Keyboard shortcut 'N' opens Quick-Create
   useEffect(() => {
     const handleKeyDownGlobal = (e: KeyboardEvent) => {
@@ -502,18 +630,27 @@ export const Timeline: React.FC = () => {
 
   const snapDate = useCallback((d: Date) => {
     const result = new Date(d);
-    if (viewMode === 'Day') {
+    const unit = dateScale.resolvedUnit;
+    if (unit === 'day') {
       result.setHours(0, 0, 0, 0);
-    } else if (viewMode === 'Week') {
+    } else if (unit === 'week') {
       const day = result.getDay();
       result.setDate(result.getDate() - day);
       result.setHours(0, 0, 0, 0);
-    } else {
+    } else if (unit === 'month') {
       result.setDate(1);
+      result.setHours(0, 0, 0, 0);
+    } else if (unit === 'quarter') {
+      const qLen = quarterLength || 3;
+      const idx = Math.floor(result.getMonth() / qLen);
+      result.setMonth(idx * qLen, 1);
+      result.setHours(0, 0, 0, 0);
+    } else { // year
+      result.setMonth(0, 1);
       result.setHours(0, 0, 0, 0);
     }
     return result;
-  }, [viewMode]);
+  }, [dateScale.resolvedUnit, quarterLength]);
 
   // Initials for avatar rendering
   const getInitials = (name?: string) => {
@@ -576,7 +713,7 @@ export const Timeline: React.FC = () => {
 
       setQcName('');
       setQcOwner(user?.name || '');
-      setQcVertical(rowGroupId || 'Sales');
+      setQcVertical(rowGroupId || departments[0]?.name || '');
 
       setQuickCreate({
         startDate: date1,
@@ -615,20 +752,23 @@ export const Timeline: React.FC = () => {
 
     const initialStart = new Date(target.startDate);
     const initialEnd = new Date(target.deadline);
+    const initialStartX = dateToX(initialStart);
+    const initialEndX = dateToX(initialEnd);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
-      const deltaDays = deltaX / pixelsPerDay;
-      const deltaMs = deltaDays * 24 * 60 * 60 * 1000;
 
       let updatedStart = initialStart;
       let updatedEnd = initialEnd;
 
       if (action === 'move') {
-        updatedStart = new Date(initialStart.getTime() + deltaMs);
-        updatedEnd = new Date(initialEnd.getTime() + deltaMs);
+        const newStartX = initialStartX + deltaX;
+        const duration = initialEnd.getTime() - initialStart.getTime();
+        updatedStart = xToDate(newStartX);
+        updatedEnd = new Date(updatedStart.getTime() + duration);
       } else if (action === 'resize') {
-        updatedEnd = new Date(initialEnd.getTime() + deltaMs);
+        const newEndX = initialEndX + deltaX;
+        updatedEnd = xToDate(newEndX);
         if (updatedEnd <= updatedStart) {
           updatedEnd = new Date(updatedStart.getTime() + 24 * 60 * 60 * 1000);
         }
@@ -651,17 +791,18 @@ export const Timeline: React.FC = () => {
       document.removeEventListener('mouseup', handleMouseUp);
 
       const deltaX = upEvent.clientX - startX;
-      const deltaDays = deltaX / pixelsPerDay;
-      const deltaMs = deltaDays * 24 * 60 * 60 * 1000;
 
       let finalStart = initialStart;
       let finalEnd = initialEnd;
 
       if (action === 'move') {
-        finalStart = new Date(initialStart.getTime() + deltaMs);
-        finalEnd = new Date(initialEnd.getTime() + deltaMs);
+        const newStartX = initialStartX + deltaX;
+        const duration = initialEnd.getTime() - initialStart.getTime();
+        finalStart = xToDate(newStartX);
+        finalEnd = new Date(finalStart.getTime() + duration);
       } else if (action === 'resize') {
-        finalEnd = new Date(initialEnd.getTime() + deltaMs);
+        const newEndX = initialEndX + deltaX;
+        finalEnd = xToDate(newEndX);
         if (finalEnd <= finalStart) {
           finalEnd = new Date(finalStart.getTime() + 24 * 60 * 60 * 1000);
         }
@@ -681,7 +822,7 @@ export const Timeline: React.FC = () => {
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [localTargets, pixelsPerDay, api, refresh, dependencySourceId]);
+  }, [localTargets, dateToX, xToDate, api, refresh, dependencySourceId]);
 
   // Drag Progress Handle inside Task Bar
   const handleProgressMouseDown = useCallback((
@@ -764,13 +905,80 @@ export const Timeline: React.FC = () => {
 
   // Jump to Today
   const handleJumpToday = useCallback(() => {
-    if (todayX !== null && bodyHorizontalScrollRef.current) {
+    setViewportStart(new Date());
+    setTimeout(() => {
+      if (bodyHorizontalScrollRef.current) {
+        const today = new Date();
+        const tx = dateToX(today);
+        bodyHorizontalScrollRef.current.scrollTo({
+          left: tx - bodyHorizontalScrollRef.current.clientWidth / 2,
+          behavior: 'smooth'
+        });
+      }
+    }, 50);
+  }, [dateToX]);
+
+  // Fit to tasks zoom-range escape hatch
+  const handleFitToTasks = useCallback(() => {
+    if (localTargets.length === 0) return;
+    const starts = localTargets.map(t => new Date(t.startDate).getTime());
+    const ends = localTargets.map(t => new Date(t.deadline).getTime());
+    const minStart = Math.min(...starts);
+    const maxEnd = Math.max(...ends);
+    const duration = maxEnd - minStart;
+    const padding = Math.max(7 * 24 * 60 * 60 * 1000, duration * 0.1); // ~10% padding (min 1 week)
+
+    const start = new Date(minStart - padding);
+    const end = new Date(maxEnd + padding);
+
+    setCustomStart(start);
+    setCustomEnd(end);
+    setViewMode('Custom');
+    if (bodyHorizontalScrollRef.current) {
+      bodyHorizontalScrollRef.current.scrollLeft = 0;
+    }
+  }, [localTargets]);
+
+
+
+
+
+
+
+  // Auto-scroll/auto-pan on initial load or zoom level change if default range is empty
+  useEffect(() => {
+    if (loading || localTargets.length === 0 || !bodyHorizontalScrollRef.current) return;
+
+    const visibleStart = xToDate(0);
+    const visibleEnd = xToDate(canvasWidthPx);
+
+    const hasVisibleTasks = localTargets.some(t => {
+      const tStart = new Date(t.startDate);
+      const tEnd = new Date(t.deadline);
+      return tStart <= visibleEnd && tEnd >= visibleStart;
+    });
+
+    if (!hasVisibleTasks) {
+      const starts = localTargets.map(t => new Date(t.startDate).getTime());
+      const minStart = new Date(Math.min(...starts));
+      const today = new Date();
+
+      const hasTasksNearToday = localTargets.some(t => {
+        const tStart = new Date(t.startDate);
+        const tEnd = new Date(t.deadline);
+        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+        return tStart.getTime() <= today.getTime() + thirtyDays && tEnd.getTime() >= today.getTime() - thirtyDays;
+      });
+
+      const targetDate = hasTasksNearToday ? today : minStart;
+      const tx = dateToX(targetDate);
+
       bodyHorizontalScrollRef.current.scrollTo({
-        left: todayX - bodyHorizontalScrollRef.current.clientWidth / 2,
-        behavior: 'smooth'
+        left: tx - canvasWidthPx / 2,
+        behavior: 'auto'
       });
     }
-  }, [todayX]);
+  }, [localTargets, viewMode, canvasWidthPx, xToDate, dateToX, loading]);
 
   // ── Context Menu Actions ────────────────────────────────────────────────────
   const handleContextMenu = (e: React.MouseEvent, targetId?: string, rowGroupId?: string) => {
@@ -914,16 +1122,35 @@ export const Timeline: React.FC = () => {
     }
   };
 
+  const handleCustomDatePickerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempCustomStart || !tempCustomEnd) return;
+    const start = new Date(tempCustomStart);
+    const end = new Date(tempCustomEnd);
+    if (end <= start) {
+      alert('End date must be after start date');
+      return;
+    }
+    setCustomStart(start);
+    setCustomEnd(end);
+    setViewMode('Custom');
+    setShowCustomDatePicker(false);
+  };
+
   // ── Quick-Create Popover Submission ──────────────────────────────────────────
   const handleQuickCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickCreate) return;
+    setQcError(null);
+
+    const targetVertical = qcVertical || departments[0]?.name || 'Sales';
+    const targetOwner = qcOwner || user?.name || 'Super Admin';
 
     try {
-      await api.post('/targets', {
+      const res = await api.post('/targets', {
         name: qcName || (quickCreate.isMilestone ? 'New Milestone' : 'New Task'),
-        vertical: qcVertical,
-        owner: qcOwner,
+        vertical: targetVertical,
+        owner: targetOwner,
         startDate: quickCreate.startDate.toISOString(),
         deadline: quickCreate.deadline.toISOString(),
         isMilestone: !!quickCreate.isMilestone,
@@ -931,12 +1158,67 @@ export const Timeline: React.FC = () => {
         targetValue: 100,
         currentValue: 0,
         unit: '%',
-        direction: 'UP'
+        direction: 'up'
       });
+
+      if (res.data) {
+        const newTarget = {
+          ...res.data,
+          dependencies: res.data.dependencies || [],
+        };
+        setLocalTargets((prev) => [...prev, newTarget]);
+      }
+
       setQuickCreate(null);
       refresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Quick target creation failed:', err);
+      const msg = err.response?.data?.message;
+      const formatted = Array.isArray(msg) ? msg.join('; ') : (msg || err.message || 'Quick target creation failed');
+      setQcError(formatted);
+    }
+  };
+
+  // ── Open & Handle Target Progress Update Modal ────────────────────────────────
+  const openEditTargetModal = (target: GanttTarget) => {
+    setEditTargetModal(target);
+    setEditValue(target.currentValue ?? 0);
+    setEditStartDate(new Date(target.startDate).toISOString().split('T')[0]);
+    setEditDeadline(new Date(target.deadline).toISOString().split('T')[0]);
+    setEditError(null);
+  };
+
+  const handleEditTargetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTargetModal) return;
+    setEditError(null);
+    try {
+      const targetVal = editTargetModal.targetValue || 100;
+      const payload = {
+        currentValue: Number(editValue),
+        startDate: new Date(editStartDate).toISOString(),
+        deadline: new Date(editDeadline).toISOString(),
+        progressPct: targetVal > 0 ? (Number(editValue) / targetVal) * 100 : 0
+      };
+
+      await api.put(`/targets/${editTargetModal.id}`, payload);
+      
+      setLocalTargets((prev) =>
+        prev.map((t) =>
+          t.id === editTargetModal.id
+            ? { ...t, ...payload, currentValue: Number(editValue) }
+            : t
+        )
+      );
+      setEditTargetModal(null);
+      refresh();
+    } catch (err: any) {
+      console.error('Updating target progress failed:', err);
+      const msg = err.response?.data?.message;
+      const formatted = Array.isArray(msg) ? msg.join('; ') : (msg || err.message || 'Failed to update target');
+      setEditError(formatted);
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -951,8 +1233,9 @@ export const Timeline: React.FC = () => {
     const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     setQcName('');
-    setQcOwner(user?.name || '');
-    setQcVertical(rowGroupId || 'Sales');
+    setQcOwner(user?.name || 'Super Admin');
+    setQcVertical(rowGroupId || departments[0]?.name || 'Sales');
+    setQcError(null);
 
     setQuickCreate({
       startDate: start,
@@ -981,8 +1264,9 @@ export const Timeline: React.FC = () => {
     rows.forEach((row, succIdx) => {
       if (row.type !== 'task' || !row.target) return;
       const t = row.target;
+      const deps = t.dependencies || [];
 
-      t.dependencies.forEach(d => {
+      deps.forEach(d => {
         if (!visibleRowIds.has(d.predecessorId)) return;
         const predIdx = rows.findIndex(r => r.id === d.predecessorId);
         if (predIdx === -1) return;
@@ -1152,8 +1436,75 @@ export const Timeline: React.FC = () => {
                 {m}
               </button>
             ))}
+            <button
+              className={`gantt-zoom-btn ${viewMode === 'Custom' ? 'active' : ''}`}
+              onClick={() => setShowCustomDatePicker(true)}
+              style={{ display: 'inline-flex', alignItems: 'center' }}
+            >
+              {viewMode === 'Custom' && customStart && customEnd ? (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span>
+                    Custom: {customStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {customEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span
+                    style={{
+                      marginLeft: '8px',
+                      padding: '2px 5px',
+                      cursor: 'pointer',
+                      borderRadius: '50%',
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      fontSize: '9px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewMode('Week');
+                    }}
+                  >
+                    ✕
+                  </span>
+                </div>
+              ) : (
+                'Custom'
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Quarter view configurations (only when viewMode is Quarter) */}
+        {viewMode === 'Quarter' && (
+          <div className="gantt-toolbar-group" style={{ animation: 'fadeIn 0.2s' }}>
+            <span className="gantt-toolbar-label">Quarters</span>
+            <input
+              type="number"
+              className="gantt-select"
+              style={{ width: '60px', padding: '0 6px', textAlign: 'center' }}
+              min={1}
+              max={24}
+              value={quarterCount}
+              onChange={(e) => setQuarterCount(Math.max(1, parseInt(e.target.value, 10) || 4))}
+            />
+            <span className="gantt-toolbar-label">Length</span>
+            <select
+              className="gantt-select"
+              value={quarterLength}
+              onChange={(e) => {
+                const length = parseInt(e.target.value, 10);
+                setQuarterLength(length);
+                setViewportStart(new Date(viewportStart.getFullYear(), Math.floor(viewportStart.getMonth() / length) * length, 1));
+              }}
+            >
+              <option value={1}>1 Month</option>
+              <option value={2}>2 Months</option>
+              <option value={3}>3 Months (Std)</option>
+              <option value={4}>4 Months</option>
+              <option value={6}>6 Months</option>
+            </select>
+          </div>
+        )}
 
         {/* Grouping */}
         <div className="gantt-toolbar-group">
@@ -1228,36 +1579,84 @@ export const Timeline: React.FC = () => {
         </div>
 
         {/* Actions & Scroll Navigation */}
-        <div className="gantt-toolbar-group" style={{ marginLeft: 'auto' }}>
+        <div className="gantt-toolbar-group" style={{ marginLeft: 'auto', gap: '8px' }}>
           {/* Scroll Left Button */}
-          <button className="gantt-action-btn" onClick={handleScrollLeft} title="Scroll Left (300px)">
+          <button className="gantt-action-btn" onClick={handleScrollLeft} title="Scroll Left (Year/Quarter or Period)">
             <ChevronLeft size={13} />
           </button>
           {/* Scroll Right Button */}
-          <button className="gantt-action-btn" onClick={handleScrollRight} title="Scroll Right (300px)">
+          <button className="gantt-action-btn" onClick={handleScrollRight} title="Scroll Right (Year/Quarter or Period)">
             <ChevronRight size={13} />
           </button>
 
-          <button className="gantt-action-btn" onClick={handleJumpToday}>
+          <button className="gantt-action-btn" onClick={handleJumpToday} title="Jump to Today">
             <RotateCcw size={13} />
             Today
           </button>
-          <button className="gantt-action-btn" onClick={handleExportPNG}>
-            <Download size={13} />
-            PNG
+
+          <button className="gantt-action-btn" onClick={handleFitToTasks} title="Fit Zoom to encompass all Tasks">
+            <Crosshair size={13} />
+            Fit
           </button>
-          <button className="gantt-action-btn" onClick={handleExportCSV}>
-            <FileText size={13} />
-            CSV
-          </button>
-          <button className="gantt-action-btn" onClick={toggleFullscreen} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>
-            {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
-          </button>
+
+          {/* Overflow Menu for PNG, CSV, and Fullscreen Actions */}
+          <div className="gantt-toolbar-group" style={{ position: 'relative' }}>
+            <button
+              className="gantt-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowOverflowMenu(!showOverflowMenu);
+              }}
+              title="Export and Screen actions"
+              style={{ padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <SlidersHorizontal size={13} />
+              <span>Actions</span>
+              <ChevronDown size={11} />
+            </button>
+            {showOverflowMenu && (
+              <div className="gantt-dropdown-menu" style={{ right: 0, top: '36px', zIndex: 100 }} onClick={() => setShowOverflowMenu(false)}>
+                <div
+                  className="gantt-dropdown-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExportPNG();
+                    setShowOverflowMenu(false);
+                  }}
+                >
+                  <Download size={13} />
+                  <span>Export PNG</span>
+                </div>
+                <div
+                  className="gantt-dropdown-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExportCSV();
+                    setShowOverflowMenu(false);
+                  }}
+                >
+                  <FileText size={13} />
+                  <span>Export CSV</span>
+                </div>
+                <div
+                  className="gantt-dropdown-item"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFullscreen();
+                    setShowOverflowMenu(false);
+                  }}
+                >
+                  {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
+                  <span>{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Main Gantt Grid Container */}
-      <div className="gantt-container" onContextMenu={(e) => handleContextMenu(e)}>
+      <div className="gantt-container" ref={ganttContainerRef} onContextMenu={(e) => handleContextMenu(e)}>
         {/* Header Row */}
         <div className="gantt-header-row">
           {/* Optional Index Header segment */}
@@ -1286,34 +1685,25 @@ export const Timeline: React.FC = () => {
           )}
 
           {/* Date scale (header) */}
-          <div className="gantt-chart-header-scroll" ref={headerScrollRef}>
+          <div className="gantt-chart-header-scroll" ref={headerScrollRef} style={{ width: 0, flex: 1, minWidth: 0, overflowX: 'hidden' }}>
             <div className="gantt-chart-header-canvas" style={{ width: totalTimelineWidth }}>
-              {headerTicks.map((tick, idx) => (
+              {dateScale.columns.map((col, idx) => (
                 <div
                   key={idx}
                   className="gantt-chart-header-tick"
-                  style={{ left: tick.left, width: tick.width }}
+                  style={{ left: col.xPx, width: col.widthPx }}
                 >
-                  <span className="gantt-tick-label-top">{tick.topLabel}</span>
-                  <span className="gantt-tick-label-bottom">{tick.bottomLabel}</span>
+                  <span className="gantt-tick-label-top">{col.topLabel}</span>
+                  <span className="gantt-tick-label-bottom">{col.bottomLabel}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Empty state */}
-        {rows.length === 0 && (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <Calendar size={48} style={{ margin: '0 auto 16px', opacity: 0.4 }} />
-            <h3>No targets match your current filters</h3>
-            <p>Try resetting the status filters or editing search query.</p>
-          </div>
-        )}
 
-        {/* Body Container */}
-        {rows.length > 0 && (
-          <div className="gantt-body-row" ref={bodyRowRef}>
+        {/* Body Container — always rendered so the interactive canvas is always visible */}
+        <div className="gantt-body-row" ref={bodyRowRef} style={{ width: '100%', overflow: 'hidden' }}>
             {/* Scrollable Canvas Body (contains optional left strip inside to scroll in perfect sync) */}
             <div
               className="gantt-chart-body-scroll"
@@ -1321,8 +1711,9 @@ export const Timeline: React.FC = () => {
               onScroll={handleHorizontalScroll}
               onMouseDown={handleCanvasMouseDown}
               onMouseLeave={handleMouseLeave}
+              style={{ width: 0, flex: 1, minWidth: 0, overflowX: 'auto', overflowY: 'auto' }}
             >
-              <div style={{ display: 'flex', minHeight: '100%', width: totalTimelineWidth + (showCompactStrip ? 200 : 0) }}>
+              <div style={{ display: 'flex', minHeight: '100%', width: totalTimelineWidth + (showCompactStrip ? 240 : 0) }}>
                 {showCompactStrip && (
                   <div className="gantt-compact-strip">
                     {rows.map((row) => {
@@ -1737,6 +2128,7 @@ export const Timeline: React.FC = () => {
                     );
                   })}
 
+
                   {/* 4. Dependency Connector Lines SVG Layer */}
                   <svg className="gantt-svg-overlay">
                     <defs>
@@ -1758,7 +2150,7 @@ export const Timeline: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+
       </div>
 
       {/* Inline Quick-Create Popover */}
@@ -1774,6 +2166,11 @@ export const Timeline: React.FC = () => {
           <div className="gantt-quick-create-title">
             {quickCreate.isMilestone ? 'Quick Add Milestone' : 'Quick Add Target'}
           </div>
+          {qcError && (
+            <div style={{ padding: '6px 10px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '12px', marginBottom: '12px' }}>
+              {qcError}
+            </div>
+          )}
           <form onSubmit={handleQuickCreateSubmit}>
             <div className="gantt-quick-create-row">
               <label>Name</label>
@@ -1803,9 +2200,9 @@ export const Timeline: React.FC = () => {
                 onChange={(e) => setQcVertical(e.target.value)}
                 disabled={!!quickCreate.groupId}
               >
-                <option value="Sales">Sales</option>
-                <option value="Production">Production</option>
-                <option value="Hiring">Hiring</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
               </select>
             </div>
             <div className="gantt-quick-create-row">
@@ -1851,11 +2248,21 @@ export const Timeline: React.FC = () => {
               <div
                 className="gantt-context-menu-item"
                 onClick={() => {
+                  const targetToEdit = localTargets.find(t => t.id === contextMenu.targetId);
+                  if (targetToEdit) openEditTargetModal(targetToEdit);
+                  setContextMenu(null);
+                }}
+              >
+                <Sliders size={12} /> Update Progress & Dates
+              </div>
+              <div
+                className="gantt-context-menu-item"
+                onClick={() => {
                   navigate(`/targets/${contextMenu.targetId}`);
                   setContextMenu(null);
                 }}
               >
-                <Edit2 size={12} /> Edit Details
+                <Edit2 size={12} /> View Full Target Details
               </div>
               <div
                 className="gantt-context-menu-item"
@@ -1955,30 +2362,290 @@ export const Timeline: React.FC = () => {
         </div>
       )}
 
+      {/* Update Target Progress & Dates Modal */}
+      {editTargetModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setEditTargetModal(null)}
+        >
+          <div
+            style={{
+              background: '#141520',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '480px',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '18px 24px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sliders size={20} style={{ color: '#60a5fa' }} />
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
+                  Update Progress & Dates
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditTargetModal(null)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditTargetSubmit} style={{ padding: '24px' }}>
+              {editError && (
+                <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#f87171', fontSize: '13px', marginBottom: '16px' }}>
+                  {editError}
+                </div>
+              )}
+
+              <div style={{ marginBottom: '20px', background: 'rgba(255,255,255,0.03)', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Target Name</span>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>{editTargetModal.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {editTargetModal.vertical} • {editTargetModal.owner}
+                </div>
+              </div>
+
+              {/* Progress Slider */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    Completed Value ({editTargetModal.unit})
+                  </label>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#60a5fa' }}>
+                    {(editTargetModal.targetValue || 100) > 0 ? Math.min(100, Math.max(0, Math.round((editValue / (editTargetModal.targetValue || 100)) * 100))) : 0}% Completed
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step="any"
+                    value={editValue}
+                    onChange={(e) => setEditValue(Number(e.target.value))}
+                    style={{
+                      width: '120px',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: '#0d0e15',
+                      color: '#ffffff',
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      outline: 'none'
+                    }}
+                  />
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>/ {editTargetModal.targetValue} {editTargetModal.unit}</span>
+                </div>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={editTargetModal.targetValue || 100}
+                  step={1}
+                  value={editValue}
+                  onChange={(e) => setEditValue(Number(e.target.value))}
+                  style={{
+                    width: '100%',
+                    accentColor: '#3b82f6',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+
+              {/* Start Date & Deadline */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: '#0d0e15',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Deadline
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editDeadline}
+                    onChange={(e) => setEditDeadline(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: '#0d0e15',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditTargetModal(null)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#ffffff',
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: editSaving ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    opacity: editSaving ? 0.7 : 1
+                  }}
+                >
+                  {editSaving ? 'Saving...' : 'Save & Update Timeline'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Date Range Picker Modal */}
+      {showCustomDatePicker && (
+        <div className="modal-overlay" onClick={() => setShowCustomDatePicker(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <span className="modal-title">Custom Date Range</span>
+              <button className="modal-close" onClick={() => setShowCustomDatePicker(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={handleCustomDatePickerSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Start Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={tempCustomStart}
+                    onChange={(e) => setTempCustomStart(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">End Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={tempCustomEnd}
+                    onChange={(e) => setTempCustomEnd(e.target.value)}
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowCustomDatePicker(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    Apply Range
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Legend Block */}
-      <div className="gantt-legend">
-        <div className="gantt-legend-item">
-          <span className="gantt-legend-dot green" />Green (On Track)
-        </div>
-        <div className="gantt-legend-item">
-          <span className="gantt-legend-dot amber" />Amber (At Risk)
-        </div>
-        <div className="gantt-legend-item">
-          <span className="gantt-legend-dot red" />Red (Off Track)
-        </div>
-        {showCritical && (
+      <div className="gantt-legend" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
           <div className="gantt-legend-item">
-            <span className="gantt-legend-dot critical" />Critical Path
+            <span className="gantt-legend-dot green" />Green (On Track)
           </div>
-        )}
-        {showBaseline && (
           <div className="gantt-legend-item">
-            <span className="gantt-legend-dot baseline" />Baseline Plan
+            <span className="gantt-legend-dot amber" />Amber (At Risk)
           </div>
-        )}
-        <div className="gantt-legend-item" style={{ marginLeft: 'auto', opacity: 0.6 }}>
-          <Info size={12} style={{ display: 'inline-block', marginRight: '4px' }} />
-          Right click canvas for context menu | Drag on empty rows to schedule | Press N to add target
+          <div className="gantt-legend-item">
+            <span className="gantt-legend-dot red" />Red (Off Track)
+          </div>
+          {showCritical && (
+            <div className="gantt-legend-item">
+              <span className="gantt-legend-dot critical" />Critical Path
+            </div>
+          )}
+          {showBaseline && (
+            <div className="gantt-legend-item">
+              <span className="gantt-legend-dot baseline" />Baseline Plan
+            </div>
+          )}
+        </div>
+        <div
+          className="gantt-legend-info-hint"
+          title="Right click canvas for context menu | Drag on empty rows to schedule | Press N to add target"
+        >
+          <Info size={12} style={{ flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            Right click canvas for context menu | Drag on empty rows to schedule | Press N to add target
+          </span>
         </div>
       </div>
     </div>

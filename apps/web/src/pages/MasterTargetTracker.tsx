@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useDepartments } from '../context/DepartmentContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -12,6 +13,7 @@ import {
 
 export const MasterTargetTracker: React.FC = () => {
   const { api, user } = useAuth();
+  const { departments } = useDepartments();
   const navigate = useNavigate();
   
   const [targets, setTargets] = useState<any[]>([]);
@@ -29,7 +31,7 @@ export const MasterTargetTracker: React.FC = () => {
 
   // Form Fields
   const [formName, setFormName] = useState('');
-  const [formVertical, setFormVertical] = useState('Sales');
+  const [formVertical, setFormVertical] = useState(() => departments[0]?.name || '');
   const [formOwner, setFormOwner] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
   const [formDeadline, setFormDeadline] = useState('');
@@ -153,7 +155,7 @@ export const MasterTargetTracker: React.FC = () => {
 
   const resetForm = () => {
     setFormName('');
-    setFormVertical('Sales');
+    setFormVertical(departments[0]?.name || '');
     setFormOwner('');
     setFormStartDate('');
     setFormDeadline('');
@@ -180,9 +182,9 @@ export const MasterTargetTracker: React.FC = () => {
               onChange={(e) => setFilterVertical(e.target.value)}
             >
               <option value="">All</option>
-              <option value="Sales">Sales</option>
-              <option value="Production">Production</option>
-              <option value="Hiring">Hiring</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.name}>{d.name}</option>
+              ))}
             </select>
           </div>
 
@@ -356,9 +358,9 @@ export const MasterTargetTracker: React.FC = () => {
                   <div className="form-group">
                     <label className="form-label">Vertical Department</label>
                     <select className="form-select" value={formVertical} onChange={e => setFormVertical(e.target.value)}>
-                      <option value="Sales">Sales</option>
-                      <option value="Production">Production</option>
-                      <option value="Hiring">Hiring</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.name}>{d.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group">
@@ -445,9 +447,9 @@ export const MasterTargetTracker: React.FC = () => {
                   <div className="form-group">
                     <label className="form-label">Vertical Department</label>
                     <select className="form-select" disabled={isPlanner && !isManager} value={formVertical} onChange={e => setFormVertical(e.target.value)}>
-                      <option value="Sales">Sales</option>
-                      <option value="Production">Production</option>
-                      <option value="Hiring">Hiring</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.name}>{d.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="form-group">

@@ -10,7 +10,8 @@ import {
   BarChart3, 
   AlertTriangle, 
   FileText, 
-  LogOut 
+  LogOut,
+  Building2
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -31,6 +32,7 @@ export const Sidebar: React.FC = () => {
     { name: 'Target Tracker', path: '/targets', icon: Target },
     { name: 'Gantt Timeline', path: '/timeline', icon: Clock },
     { name: 'Calendar', path: '/calendar', icon: Calendar },
+    { name: 'Departments', path: '/departments', icon: Building2 },
     { name: 'Department Performance', path: '/performance', icon: Users },
     ...(showAnalytics ? [{ name: 'Analytics', path: '/analytics', icon: BarChart3 }] : []),
     { name: 'Alerts & Risks', path: '/alerts', icon: AlertTriangle },

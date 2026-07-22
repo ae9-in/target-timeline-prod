@@ -31,6 +31,13 @@ dump.rdb
 # Logs
 *.log
 
+# Generated Reports
+apps/api/reports/
+
+# Test & Coverage outputs
+coverage/
+.nyc_output/
+
 # Editor & System Files
 .vscode/
 .idea/

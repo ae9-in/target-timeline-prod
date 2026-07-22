@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, IsDateString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsDateString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateTargetDto {
   @IsString()
@@ -7,7 +7,6 @@ export class CreateTargetDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsEnum(['Sales', 'Production', 'Hiring'])
   vertical: string;
 
   @IsString()
@@ -37,6 +36,18 @@ export class CreateTargetDto {
   @IsNotEmpty()
   @IsEnum(['up', 'down'])
   direction: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isMilestone?: boolean;
+
+  @IsString()
+  @IsOptional()
+  wbsParentId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  progressPct?: number;
 }
 
 export class UpdateTargetDto {
@@ -46,7 +57,6 @@ export class UpdateTargetDto {
 
   @IsString()
   @IsOptional()
-  @IsEnum(['Sales', 'Production', 'Hiring'])
   vertical?: string;
 
   @IsString()
@@ -81,4 +91,16 @@ export class UpdateTargetDto {
   @IsOptional()
   @IsEnum(['up', 'down'])
   direction?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isMilestone?: boolean;
+
+  @IsString()
+  @IsOptional()
+  wbsParentId?: string;
+
+  @IsNumber()
+  @IsOptional()
+  progressPct?: number;
 }

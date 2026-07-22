@@ -76,6 +76,13 @@ export class AuthService {
       'MFA_ENCRYPTION_KEY',
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
     );
+    const keyBuffer = Buffer.from(this.mfaEncryptionKey, 'hex');
+    if (keyBuffer.length !== 32) {
+      throw new Error(
+        `MFA_ENCRYPTION_KEY must be a 64-character hex string representing a 32-byte key. ` +
+        `Current key has parsed length of ${keyBuffer.length} bytes.`
+      );
+    }
   }
 
   // Hash an opaque refresh token for storage
