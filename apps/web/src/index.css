@@ -1176,16 +1176,27 @@ a {
   overflow: auto; /* Fix: enable horizontal and vertical scrollbars natively */
   position: relative;
   background: #111218;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  /* Premium high-contrast scrollbars */
+  scrollbar-width: auto;
+  scrollbar-color: rgba(255, 255, 255, 0.35) #0f1019;
 }
+
+/* Webkit Scrollbars Custom Premium Styling */
 .gantt-chart-body-scroll::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+  height: 12px;
+  width: 12px;
+}
+.gantt-chart-body-scroll::-webkit-scrollbar-track {
+  background: #0f1019;
+  border-top: 1px solid var(--border-color);
 }
 .gantt-chart-body-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  border: 3px solid #0f1019; /* padding effect */
+}
+.gantt-chart-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .gantt-chart-body-canvas {
