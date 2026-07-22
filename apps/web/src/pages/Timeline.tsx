@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import {
   Layers, GitBranch,
-  BookMarked, Download, FileText, Search,
+  Download, FileText, Search,
   RotateCcw, SlidersHorizontal, Calendar,
-  ChevronDown, ChevronRight,
-  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2, List
+  ChevronDown, ChevronRight, ChevronLeft,
+  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGanttData } from '../hooks/useGanttData';
@@ -45,6 +45,9 @@ export const Timeline: React.FC = () => {
   const [filterMilestone, setFilterMilestone] = useState(false);
   const [filterCriticalOnly, setFilterCriticalOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // View Options dropdown popover menu
+  const [showViewMenu, setShowViewMenu] = useState(false);
 
   // Optional Left scannable index strip (off by default)
   const [showCompactStrip, setShowCompactStrip] = useState(false);
@@ -152,6 +155,19 @@ export const Timeline: React.FC = () => {
       headerScrollRef.current.scrollLeft = sl;
     }
   }, []);
+
+  // Keyboard navigation scroll controls
+  const handleScrollLeft = () => {
+    if (bodyHorizontalScrollRef.current) {
+      bodyHorizontalScrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (bodyHorizontalScrollRef.current) {
+      bodyHorizontalScrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
 
   // ── Date Scale Calculations ─────────────────────────────────────────────────
   const timelineDates = useMemo(() => {
@@ -951,6 +967,7 @@ export const Timeline: React.FC = () => {
   useEffect(() => {
     const handleGlobalClick = () => {
       setContextMenu(null);
+      setShowViewMenu(false);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
@@ -1154,7 +1171,7 @@ export const Timeline: React.FC = () => {
           </select>
         </div>
 
-        {/* RAG */}
+        {/* RAG Dropdown */}
         <div className="gantt-toolbar-group">
           <span className="gantt-toolbar-label">
             <SlidersHorizontal size={13} /> RAG
@@ -1171,46 +1188,56 @@ export const Timeline: React.FC = () => {
           </select>
         </div>
 
-        {/* Toggles */}
-        <div className="gantt-toolbar-group">
+        {/* View Options unified Dropdown to prevent screen cutoff */}
+        <div className="gantt-toolbar-group" style={{ position: 'relative' }}>
           <button
-            className={`gantt-toggle-btn ${showCritical ? 'active critical' : ''}`}
-            onClick={() => setShowCritical(!showCritical)}
+            className={`gantt-toggle-btn ${showViewMenu ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowViewMenu(!showViewMenu);
+            }}
+            title="Configure timeline view variables"
           >
-            <GitBranch size={13} />
-            Critical Path
+            <SlidersHorizontal size={13} />
+            View Options
           </button>
-          <button
-            className={`gantt-toggle-btn ${showBaseline ? 'active' : ''}`}
-            onClick={() => setShowBaseline(!showBaseline)}
-          >
-            <BookMarked size={13} />
-            Baseline
-          </button>
-          <button
-            className={`gantt-toggle-btn ${filterMilestone ? 'active' : ''}`}
-            onClick={() => setFilterMilestone(!filterMilestone)}
-          >
-            ◆ Milestones
-          </button>
-          <button
-            className={`gantt-toggle-btn ${filterCriticalOnly ? 'active critical' : ''}`}
-            onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
-          >
-            Critical Only
-          </button>
-          <button
-            className={`gantt-toggle-btn ${showCompactStrip ? 'active' : ''}`}
-            onClick={() => setShowCompactStrip(!showCompactStrip)}
-            title="Toggle left scannable index list"
-          >
-            <List size={13} />
-            Index Strip
-          </button>
+          {showViewMenu && (
+            <div className="gantt-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+              <div className="gantt-dropdown-item" onClick={() => setShowCritical(!showCritical)}>
+                <input type="checkbox" checked={showCritical} readOnly />
+                <span>Show Critical Path</span>
+              </div>
+              <div className="gantt-dropdown-item" onClick={() => setShowBaseline(!showBaseline)}>
+                <input type="checkbox" checked={showBaseline} readOnly />
+                <span>Show Baseline Overlay</span>
+              </div>
+              <div className="gantt-dropdown-item" onClick={() => setFilterMilestone(!filterMilestone)}>
+                <input type="checkbox" checked={filterMilestone} readOnly />
+                <span>Filter Milestones Only</span>
+              </div>
+              <div className="gantt-dropdown-item" onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}>
+                <input type="checkbox" checked={filterCriticalOnly} readOnly />
+                <span>Filter Critical Only</span>
+              </div>
+              <div className="gantt-dropdown-item" onClick={() => setShowCompactStrip(!showCompactStrip)}>
+                <input type="checkbox" checked={showCompactStrip} readOnly />
+                <span>Show Left Index Strip</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Actions */}
+        {/* Actions & Scroll Navigation */}
         <div className="gantt-toolbar-group" style={{ marginLeft: 'auto' }}>
+          {/* Scroll Left Button */}
+          <button className="gantt-action-btn" onClick={handleScrollLeft} title="Scroll Left (300px)">
+            <ChevronLeft size={13} />
+          </button>
+          {/* Scroll Right Button */}
+          <button className="gantt-action-btn" onClick={handleScrollRight} title="Scroll Right (300px)">
+            <ChevronRight size={13} />
+          </button>
+
           <button className="gantt-action-btn" onClick={handleJumpToday}>
             <RotateCcw size={13} />
             Today
@@ -1287,63 +1314,7 @@ export const Timeline: React.FC = () => {
         {/* Body Container */}
         {rows.length > 0 && (
           <div className="gantt-body-row" ref={bodyRowRef}>
-            {/* Optional Left Compact Index Strip - Scrolling Sync is native via sticky */}
-            {showCompactStrip && (
-              <div className="gantt-compact-strip">
-                {rows.map((row) => {
-                  const isGroup = row.type === 'group';
-                  const isGhost = row.type === 'ghost';
-                  const active = row.target && searchQuery.trim() && (
-                    row.target.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    row.target.owner.toLowerCase().includes(searchQuery.toLowerCase())
-                  );
-
-                  return (
-                    <div
-                      key={row.id}
-                      className={`gantt-compact-row ${isGroup ? 'group-row' : ''} ${isGhost ? 'ghost-row' : ''}`}
-                      style={{
-                        height: ROW_HEIGHT,
-                        background: active ? 'var(--color-primary-glow)' : undefined
-                      }}
-                      onClick={(e) => {
-                        if (isGroup) handleGroupToggle(row.id);
-                        if (isGhost) hasEditAccess(row.groupId || 'Sales') && handleEmptyRowClick(e, row.groupId);
-                      }}
-                    >
-                      {!isGroup && !isGhost && row.target && (
-                        <span
-                          className={`badge-dot ${row.target.ragStatus.toLowerCase()}`}
-                          style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            display: 'inline-block',
-                            background: `var(--color-rag-${row.target.ragStatus.toLowerCase()})`
-                          }}
-                        />
-                      )}
-                      <strong>{row.label}</strong>
-                    </div>
-                  );
-                })}
-
-                {/* Ghost index rows */}
-                {ghostRows.map((index) => (
-                  <div
-                    key={`ghost-index-${index}`}
-                    className="gantt-compact-row ghost-row"
-                    style={{ height: ROW_HEIGHT }}
-                    onClick={(e) => hasEditAccess('Sales') && handleEmptyRowClick(e)}
-                  >
-                    <Plus size={10} style={{ opacity: 0.6 }} />
-                    <span style={{ color: 'var(--text-muted)' }}>+ Add target...</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Right chart canvas grid */}
+            {/* Scrollable Canvas Body (contains optional left strip inside to scroll in perfect sync) */}
             <div
               className="gantt-chart-body-scroll"
               ref={bodyHorizontalScrollRef}
@@ -1351,96 +1322,409 @@ export const Timeline: React.FC = () => {
               onMouseDown={handleCanvasMouseDown}
               onMouseLeave={handleMouseLeave}
             >
-              <div
-                className="gantt-chart-body-canvas"
-                style={{
-                  width: totalTimelineWidth,
-                  height: totalCanvasHeight
-                }}
-              >
-                {/* 1. Weekend shading Bands (in background) */}
-                {weekendBands.map((band, idx) => (
-                  <div
-                    key={idx}
-                    className="gantt-weekend-band"
-                    style={{
-                      position: 'absolute',
-                      left: band.left,
-                      width: band.width,
-                      top: 0,
-                      bottom: 0,
-                      height: '100%',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                ))}
+              <div style={{ display: 'flex', minHeight: '100%', width: totalTimelineWidth + (showCompactStrip ? 200 : 0) }}>
+                {showCompactStrip && (
+                  <div className="gantt-compact-strip">
+                    {rows.map((row) => {
+                      const isGroup = row.type === 'group';
+                      const isGhost = row.type === 'ghost';
+                      const active = row.target && searchQuery.trim() && (
+                        row.target.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        row.target.owner.toLowerCase().includes(searchQuery.toLowerCase())
+                      );
 
-                {/* 2. Today Line marker */}
-                {todayX !== null && (
-                  <div
-                    className="gantt-today-line"
-                    style={{
-                      position: 'absolute',
-                      left: todayX,
-                      top: 0,
-                      bottom: 0,
-                      width: '2px',
-                      background: 'var(--color-primary)',
-                      zIndex: 5,
-                      pointerEvents: 'none'
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: '-4px',
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: 'var(--color-primary)'
-                      }}
-                    />
+                      return (
+                        <div
+                          key={row.id}
+                          className={`gantt-compact-row ${isGroup ? 'group-row' : ''} ${isGhost ? 'ghost-row' : ''}`}
+                          style={{
+                            height: ROW_HEIGHT,
+                            background: active ? 'var(--color-primary-glow)' : undefined
+                          }}
+                          onClick={() => isGroup && handleGroupToggle(row.id)}
+                        >
+                          {!isGroup && !isGhost && row.target && (
+                            <span
+                              className={`badge-dot ${row.target.ragStatus.toLowerCase()}`}
+                              style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                display: 'inline-block',
+                                background: `var(--color-rag-${row.target.ragStatus.toLowerCase()})`
+                              }}
+                            />
+                          )}
+                          <strong>{row.label}</strong>
+                        </div>
+                      );
+                    })}
+
+                    {/* Ghost index rows */}
+                    {ghostRows.map((index) => (
+                      <div
+                        key={`ghost-index-${index}`}
+                        className="gantt-compact-row ghost-row"
+                        style={{ height: ROW_HEIGHT }}
+                        onClick={(e) => hasEditAccess('Sales') && handleEmptyRowClick(e)}
+                      >
+                        <Plus size={10} style={{ opacity: 0.6 }} />
+                        <span style={{ color: 'var(--text-muted)' }}>+ Add target...</span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* Hover vertical guide line */}
-                {hoverGuideX !== null && (
-                  <div
-                    className="gantt-hover-guide"
-                    style={{
-                      position: 'absolute',
-                      left: hoverGuideX,
-                      top: 0,
-                      bottom: 0,
-                      width: '1px',
-                      borderLeft: '1px dashed rgba(255, 255, 255, 0.15)',
-                      pointerEvents: 'none',
-                      zIndex: 6
-                    }}
-                  />
-                )}
+                <div
+                  className="gantt-chart-body-canvas"
+                  style={{
+                    width: totalTimelineWidth,
+                    height: totalCanvasHeight,
+                    position: 'relative'
+                  }}
+                >
+                  {/* 1. Weekend shading Bands (in background) */}
+                  {weekendBands.map((band, idx) => (
+                    <div
+                      key={idx}
+                      className="gantt-weekend-band"
+                      style={{
+                        position: 'absolute',
+                        left: band.left,
+                        width: band.width,
+                        top: 0,
+                        bottom: 0,
+                        height: '100%',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  ))}
 
-                {/* 3. Task Rows on Canvas */}
-                {rows.map((row, idx) => {
-                  const isGroup = row.type === 'group';
-                  const isGhost = row.type === 'ghost';
+                  {/* 2. Today Line marker */}
+                  {todayX !== null && (
+                    <div
+                      className="gantt-today-line"
+                      style={{
+                        position: 'absolute',
+                        left: todayX,
+                        top: 0,
+                        bottom: 0,
+                        width: '2px',
+                        background: 'var(--color-primary)',
+                        zIndex: 5,
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: '-4px',
+                          width: '10px',
+                          height: '10px',
+                          borderRadius: '50%',
+                          background: 'var(--color-primary)'
+                        }}
+                      />
+                    </div>
+                  )}
 
-                  if (isGhost) {
+                  {/* Hover vertical guide line */}
+                  {hoverGuideX !== null && (
+                    <div
+                      className="gantt-hover-guide"
+                      style={{
+                        position: 'absolute',
+                        left: hoverGuideX,
+                        top: 0,
+                        bottom: 0,
+                        width: '1px',
+                        borderLeft: '1px dashed rgba(255, 255, 255, 0.15)',
+                        pointerEvents: 'none',
+                        zIndex: 6
+                      }}
+                    />
+                  )}
+
+                  {/* 3. Task Rows on Canvas */}
+                  {rows.map((row, idx) => {
+                    const isGroup = row.type === 'group';
+                    const isGhost = row.type === 'ghost';
+
+                    if (isGhost) {
+                      return (
+                        <div
+                          key={row.id}
+                          className="gantt-chart-row ghost-row"
+                          style={{ height: ROW_HEIGHT, width: totalTimelineWidth }}
+                          onMouseDown={(e) => handleCanvasDragStart(e, idx, row.groupId)}
+                          onContextMenu={(e) => handleContextMenu(e, undefined, row.groupId)}
+                        >
+                          <span className="gantt-add-affordance-text" style={{ position: 'absolute', left: scrollLeft + 16, top: '13px' }}>
+                            <Plus size={12} /> {row.label}
+                          </span>
+
+                          {/* Drag preview bar if active */}
+                          {dragCreate && dragCreate.rowIndex === idx && (
+                            <div
+                              className="gantt-task-bar-preview"
+                              style={{
+                                left: Math.min(dragCreate.startX, dragCreate.currentX) - (bodyHorizontalScrollRef.current?.getBoundingClientRect().left || 0) + (bodyHorizontalScrollRef.current?.scrollLeft || 0),
+                                width: Math.abs(dragCreate.startX - dragCreate.currentX)
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (isGroup) {
+                      return (
+                        <div
+                          key={row.id}
+                          className="gantt-chart-row group-row"
+                          style={{
+                            height: ROW_HEIGHT,
+                            width: totalTimelineWidth
+                          }}
+                          onClick={() => handleGroupToggle(row.id)}
+                        >
+                          <div className="gantt-group-sticky-label" style={{ left: scrollLeft + 16 }}>
+                            {collapsedGroups.has(row.id) ? (
+                              <ChevronRight size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )}
+                            <strong>{row.label}</strong>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'none', marginLeft: '8px' }}>
+                              ({row.progress}% Rollup)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const t = row.target!;
+                    const isCritical = showCritical && criticalIds.has(t.id);
+                    const xStart = dateToX(new Date(t.startDate));
+                    const xEnd = dateToX(new Date(t.deadline));
+                    const barWidth = Math.max(8, xEnd - xStart);
+                    const access = hasEditAccess(t.vertical);
+
+                    // Search highlight checks
+                    const isSearchActive = searchQuery.trim().length > 0;
+                    const isSearchMatch = isSearchActive && (
+                      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.owner.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+
+                    // Label Rendering positions
+                    const insideFits = barWidth > 180;
+                    const leftRooms = xStart > scrollLeft + 200;
+
                     return (
                       <div
-                        key={row.id}
+                        key={t.id}
+                        className="gantt-chart-row"
+                        style={{
+                          height: ROW_HEIGHT,
+                          width: totalTimelineWidth
+                        }}
+                        onContextMenu={(e) => handleContextMenu(e, t.id, t.vertical)}
+                      >
+                        {/* Floating Label to the left of the bar */}
+                        {!insideFits && leftRooms && (
+                          <div
+                            className="gantt-label-floating"
+                            style={{
+                              left: xStart - 190,
+                              width: 180,
+                              height: '100%',
+                              justifyContent: 'flex-end',
+                              color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                            }}
+                          >
+                            <div className="gantt-avatar-badge" title={t.owner}>
+                              {getInitials(t.owner)}
+                            </div>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {t.name}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Sticky Floating Label pinned at viewport boundary if scrolled past bar start */}
+                        {!insideFits && !leftRooms && xStart <= scrollLeft && xEnd > scrollLeft + 30 && (
+                          <div
+                            className="gantt-label-floating"
+                            style={{
+                              left: scrollLeft + 12,
+                              height: '100%',
+                              zIndex: 10,
+                              background: 'rgba(17, 18, 24, 0.85)',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)',
+                              color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                            }}
+                          >
+                            <div className="gantt-avatar-badge" title={t.owner}>
+                              {getInitials(t.owner)}
+                            </div>
+                            <span>{t.name}</span>
+                          </div>
+                        )}
+
+                        {/* Floating Label to the right of the bar (if neither fits inside nor has space left) */}
+                        {!insideFits && !leftRooms && xStart > scrollLeft && (
+                          <div
+                            className="gantt-label-floating"
+                            style={{
+                              left: xEnd + 8,
+                              height: '100%',
+                              color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                            }}
+                          >
+                            <div className="gantt-avatar-badge" title={t.owner}>
+                              {getInitials(t.owner)}
+                            </div>
+                            <span>{t.name}</span>
+                          </div>
+                        )}
+
+                        {/* Bar rendering */}
+                        {t.isMilestone ? (
+                          <>
+                            <div
+                              className="gantt-milestone-marker"
+                              style={{
+                                position: 'absolute',
+                                left: xStart - 6,
+                                top: '50%',
+                                transform: 'translateY(-50%) rotate(45deg)',
+                                width: '12px',
+                                height: '12px',
+                                background: 'var(--color-accent)',
+                                boxShadow: '0 0 8px var(--color-accent-glow)',
+                                cursor: access ? 'grab' : 'default',
+                                zIndex: 4
+                              }}
+                              onMouseDown={(e) => access && handleBarMouseDown(e, t.id, 'move')}
+                              onMouseEnter={(e) => handleMouseEnter(e, t)}
+                              onMouseLeave={handleMouseLeave}
+                              title={`${t.name} (Milestone)`}
+                            />
+                            {/* Floating Right Label for milestones */}
+                            <div
+                              className="gantt-label-floating"
+                              style={{
+                                left: xStart + 12,
+                                height: '100%',
+                                color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                              }}
+                            >
+                              <div className="gantt-avatar-badge" title={t.owner}>
+                                {getInitials(t.owner)}
+                              </div>
+                              <span>{t.name}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div
+                            className={`gantt-task-bar-wrapper ${isCritical ? 'critical' : ''} ${isSearchMatch ? 'search-match' : ''} ${isSearchActive && !isSearchMatch ? 'search-dimmed' : ''}`}
+                            style={{
+                              left: xStart,
+                              width: barWidth,
+                              background: `var(--color-rag-${t.ragStatus.toLowerCase()}-bg)`,
+                              border: `1px solid var(--color-rag-${t.ragStatus.toLowerCase()}-border)`
+                            }}
+                            onMouseDown={(e) => access && handleBarMouseDown(e, t.id, 'move')}
+                            onMouseEnter={(e) => handleMouseEnter(e, t)}
+                            onMouseLeave={handleMouseLeave}
+                          >
+                            <div className="gantt-task-bar">
+                              <div
+                                className="gantt-task-bar-progress"
+                                style={{
+                                  width: `${t.progressPct}%`,
+                                  background: `var(--color-rag-${t.ragStatus.toLowerCase()})`
+                                }}
+                              />
+
+                              {/* Label Inside Bar (if it fits) */}
+                              {insideFits && (
+                                <div
+                                  className="gantt-label-inside"
+                                  style={{
+                                    left: Math.max(6, Math.min(barWidth - 140, scrollLeft - xStart + 6))
+                                  }}
+                                >
+                                  <div className="gantt-avatar-badge" title={t.owner}>
+                                    {getInitials(t.owner)}
+                                  </div>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {t.name} ({t.progressPct}%)
+                                  </span>
+                                </div>
+                              )}
+
+                              {access && (
+                                <div
+                                  className="gantt-task-bar-progress-handle"
+                                  style={{ left: `${t.progressPct}%` }}
+                                  onMouseDown={(e) => handleProgressMouseDown(e, t.id, barWidth)}
+                                />
+                              )}
+                            </div>
+                            {access && (
+                              <div
+                                className="gantt-task-bar-resize-handle"
+                                onMouseDown={(e) => handleBarMouseDown(e, t.id, 'resize')}
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        {showBaseline && t.latestBaseline && (
+                          <div
+                            className="gantt-baseline-bar"
+                            style={{
+                              position: 'absolute',
+                              left: dateToX(new Date(t.latestBaseline.baselineStart)),
+                              width: Math.max(6, dateToX(new Date(t.latestBaseline.baselineEnd)) - dateToX(new Date(t.latestBaseline.baselineStart))),
+                              top: '31px',
+                              height: '6px',
+                              borderRadius: '2px',
+                              background: 'rgba(148, 163, 184, 0.15)',
+                              border: '1px dashed rgba(148, 163, 184, 0.4)',
+                              pointerEvents: 'none'
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Ghost rows on the canvas body */}
+                  {ghostRows.map((index) => {
+                    const actualRowIdx = rows.length + index;
+                    return (
+                      <div
+                        key={`ghost-chart-${index}`}
                         className="gantt-chart-row ghost-row"
-                        style={{ height: ROW_HEIGHT, width: totalTimelineWidth }}
-                        onMouseDown={(e) => handleCanvasDragStart(e, idx, row.groupId)}
-                        onContextMenu={(e) => handleContextMenu(e, undefined, row.groupId)}
+                        style={{
+                          height: ROW_HEIGHT,
+                          width: totalTimelineWidth
+                        }}
+                        onMouseDown={(e) => handleCanvasDragStart(e, actualRowIdx)}
+                        onContextMenu={(e) => handleContextMenu(e, undefined)}
                       >
                         <span className="gantt-add-affordance-text" style={{ position: 'absolute', left: scrollLeft + 16, top: '13px' }}>
-                          <Plus size={12} /> {row.label}
+                          <Plus size={12} /> + Add target...
                         </span>
 
                         {/* Drag preview bar if active */}
-                        {dragCreate && dragCreate.rowIndex === idx && (
+                        {dragCreate && dragCreate.rowIndex === actualRowIdx && (
                           <div
                             className="gantt-task-bar-preview"
                             style={{
@@ -1451,284 +1735,26 @@ export const Timeline: React.FC = () => {
                         )}
                       </div>
                     );
-                  }
+                  })}
 
-                  if (isGroup) {
-                    return (
-                      <div
-                        key={row.id}
-                        className="gantt-chart-row group-row"
-                        style={{
-                          height: ROW_HEIGHT,
-                          width: totalTimelineWidth
-                        }}
-                        onClick={() => handleGroupToggle(row.id)}
+                  {/* 4. Dependency Connector Lines SVG Layer */}
+                  <svg className="gantt-svg-overlay">
+                    <defs>
+                      <marker
+                        id="gantt-arrowhead"
+                        viewBox="0 0 10 10"
+                        refX="6"
+                        refY="5"
+                        markerWidth="6"
+                        markerHeight="6"
+                        orient="auto-start-reverse"
                       >
-                        <div className="gantt-group-sticky-label" style={{ left: scrollLeft + 16 }}>
-                          {collapsedGroups.has(row.id) ? (
-                            <ChevronRight size={14} />
-                          ) : (
-                            <ChevronDown size={14} />
-                          )}
-                          <strong>{row.label}</strong>
-                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'none', marginLeft: '8px' }}>
-                            ({row.progress}% Rollup)
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  const t = row.target!;
-                  const isCritical = showCritical && criticalIds.has(t.id);
-                  const xStart = dateToX(new Date(t.startDate));
-                  const xEnd = dateToX(new Date(t.deadline));
-                  const barWidth = Math.max(8, xEnd - xStart);
-                  const access = hasEditAccess(t.vertical);
-
-                  // Search highlight checks
-                  const isSearchActive = searchQuery.trim().length > 0;
-                  const isSearchMatch = isSearchActive && (
-                    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    t.owner.toLowerCase().includes(searchQuery.toLowerCase())
-                  );
-
-                  // Label Rendering positions
-                  const insideFits = barWidth > 180;
-                  const leftRooms = xStart > scrollLeft + 200;
-
-                  return (
-                    <div
-                      key={t.id}
-                      className="gantt-chart-row"
-                      style={{
-                        height: ROW_HEIGHT,
-                        width: totalTimelineWidth
-                      }}
-                      onContextMenu={(e) => handleContextMenu(e, t.id, t.vertical)}
-                    >
-                      {/* Floating Label to the left of the bar */}
-                      {!insideFits && leftRooms && (
-                        <div
-                          className="gantt-label-floating"
-                          style={{
-                            left: xStart - 190,
-                            width: 180,
-                            height: '100%',
-                            justifyContent: 'flex-end',
-                            color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
-                          }}
-                        >
-                          <div className="gantt-avatar-badge" title={t.owner}>
-                            {getInitials(t.owner)}
-                          </div>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {t.name}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Sticky Floating Label pinned at viewport boundary if scrolled past bar start */}
-                      {!insideFits && !leftRooms && xStart <= scrollLeft && xEnd > scrollLeft + 30 && (
-                        <div
-                          className="gantt-label-floating"
-                          style={{
-                            left: scrollLeft + 12,
-                            height: '100%',
-                            zIndex: 10,
-                            background: 'rgba(17, 18, 24, 0.85)',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            border: '1px solid var(--border-color)',
-                            color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
-                          }}
-                        >
-                          <div className="gantt-avatar-badge" title={t.owner}>
-                            {getInitials(t.owner)}
-                          </div>
-                          <span>{t.name}</span>
-                        </div>
-                      )}
-
-                      {/* Floating Label to the right of the bar (if neither fits inside nor has space left) */}
-                      {!insideFits && !leftRooms && xStart > scrollLeft && (
-                        <div
-                          className="gantt-label-floating"
-                          style={{
-                            left: xEnd + 8,
-                            height: '100%',
-                            color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
-                          }}
-                        >
-                          <div className="gantt-avatar-badge" title={t.owner}>
-                            {getInitials(t.owner)}
-                          </div>
-                          <span>{t.name}</span>
-                        </div>
-                      )}
-
-                      {/* Bar rendering */}
-                      {t.isMilestone ? (
-                        <>
-                          <div
-                            className="gantt-milestone-marker"
-                            style={{
-                              position: 'absolute',
-                              left: xStart - 6,
-                              top: '50%',
-                              transform: 'translateY(-50%) rotate(45deg)',
-                              width: '12px',
-                              height: '12px',
-                              background: 'var(--color-accent)',
-                              boxShadow: '0 0 8px var(--color-accent-glow)',
-                              cursor: access ? 'grab' : 'default',
-                              zIndex: 4
-                            }}
-                            onMouseDown={(e) => access && handleBarMouseDown(e, t.id, 'move')}
-                            onMouseEnter={(e) => handleMouseEnter(e, t)}
-                            onMouseLeave={handleMouseLeave}
-                            title={`${t.name} (Milestone)`}
-                          />
-                          {/* Floating Right Label for milestones */}
-                          <div
-                            className="gantt-label-floating"
-                            style={{
-                              left: xStart + 12,
-                              height: '100%',
-                              color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
-                            }}
-                          >
-                            <div className="gantt-avatar-badge" title={t.owner}>
-                              {getInitials(t.owner)}
-                            </div>
-                            <span>{t.name}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div
-                          className={`gantt-task-bar-wrapper ${isCritical ? 'critical' : ''} ${isSearchMatch ? 'search-match' : ''} ${isSearchActive && !isSearchMatch ? 'search-dimmed' : ''}`}
-                          style={{
-                            left: xStart,
-                            width: barWidth,
-                            background: `var(--color-rag-${t.ragStatus.toLowerCase()}-bg)`,
-                            border: `1px solid var(--color-rag-${t.ragStatus.toLowerCase()}-border)`
-                          }}
-                          onMouseDown={(e) => access && handleBarMouseDown(e, t.id, 'move')}
-                          onMouseEnter={(e) => handleMouseEnter(e, t)}
-                          onMouseLeave={handleMouseLeave}
-                        >
-                          <div className="gantt-task-bar">
-                            <div
-                              className="gantt-task-bar-progress"
-                              style={{
-                                width: `${t.progressPct}%`,
-                                background: `var(--color-rag-${t.ragStatus.toLowerCase()})`
-                              }}
-                            />
-
-                            {/* Label Inside Bar (if it fits) */}
-                            {insideFits && (
-                              <div
-                                className="gantt-label-inside"
-                                style={{
-                                  left: Math.max(6, Math.min(barWidth - 140, scrollLeft - xStart + 6))
-                                }}
-                              >
-                                <div className="gantt-avatar-badge" title={t.owner}>
-                                  {getInitials(t.owner)}
-                                </div>
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {t.name} ({t.progressPct}%)
-                                </span>
-                              </div>
-                            )}
-
-                            {access && (
-                              <div
-                                className="gantt-task-bar-progress-handle"
-                                style={{ left: `${t.progressPct}%` }}
-                                onMouseDown={(e) => handleProgressMouseDown(e, t.id, barWidth)}
-                              />
-                            )}
-                          </div>
-                          {access && (
-                            <div
-                              className="gantt-task-bar-resize-handle"
-                              onMouseDown={(e) => handleBarMouseDown(e, t.id, 'resize')}
-                            />
-                          )}
-                        </div>
-                      )}
-
-                      {showBaseline && t.latestBaseline && (
-                        <div
-                          className="gantt-baseline-bar"
-                          style={{
-                            position: 'absolute',
-                            left: dateToX(new Date(t.latestBaseline.baselineStart)),
-                            width: Math.max(6, dateToX(new Date(t.latestBaseline.baselineEnd)) - dateToX(new Date(t.latestBaseline.baselineStart))),
-                            top: '31px',
-                            height: '6px',
-                            borderRadius: '2px',
-                            background: 'rgba(148, 163, 184, 0.15)',
-                            border: '1px dashed rgba(148, 163, 184, 0.4)',
-                            pointerEvents: 'none'
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Ghost rows on the canvas body */}
-                {ghostRows.map((index) => {
-                  const actualRowIdx = rows.length + index;
-                  return (
-                    <div
-                      key={`ghost-chart-${index}`}
-                      className="gantt-chart-row ghost-row"
-                      style={{
-                        height: ROW_HEIGHT,
-                        width: totalTimelineWidth
-                      }}
-                      onMouseDown={(e) => handleCanvasDragStart(e, actualRowIdx)}
-                      onContextMenu={(e) => handleContextMenu(e, undefined)}
-                    >
-                      <span className="gantt-add-affordance-text" style={{ position: 'absolute', left: scrollLeft + 16, top: '13px' }}>
-                        <Plus size={12} /> + Add target...
-                      </span>
-
-                      {/* Drag preview bar if active */}
-                      {dragCreate && dragCreate.rowIndex === actualRowIdx && (
-                        <div
-                          className="gantt-task-bar-preview"
-                          style={{
-                            left: Math.min(dragCreate.startX, dragCreate.currentX) - (bodyHorizontalScrollRef.current?.getBoundingClientRect().left || 0) + (bodyHorizontalScrollRef.current?.scrollLeft || 0),
-                            width: Math.abs(dragCreate.startX - dragCreate.currentX)
-                          }}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* 4. Dependency Connector Lines SVG Layer */}
-                <svg className="gantt-svg-overlay">
-                  <defs>
-                    <marker
-                      id="gantt-arrowhead"
-                      viewBox="0 0 10 10"
-                      refX="6"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 1.5 L 6 5 L 0 8.5 z" fill="rgba(148, 163, 184, 0.5)" />
-                    </marker>
-                  </defs>
-                  {dependencyLines}
-                </svg>
+                        <path d="M 0 1.5 L 6 5 L 0 8.5 z" fill="rgba(148, 163, 184, 0.5)" />
+                      </marker>
+                    </defs>
+                    {dependencyLines}
+                  </svg>
+                </div>
               </div>
             </div>
           </div>

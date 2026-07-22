@@ -1160,17 +1160,55 @@ a {
   color: var(--text-secondary);
 }
 
-/* â”€â”€ Body Container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€ Body Container (Parent is fixed, Child handles both X & Y scrolls) â”€â”€â”€â”€ */
 .gantt-body-row {
   display: flex;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* Fix: parent does not scroll, preventing scrollbar cutoff */
   position: relative;
 }
 
-/* Optional Sticky Compact Side Strip */
+/* Scrollable Canvas Body */
+.gantt-chart-body-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow: auto; /* Fix: enable horizontal and vertical scrollbars natively */
+  position: relative;
+  background: #111218;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.gantt-chart-body-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.gantt-chart-body-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.gantt-chart-body-canvas {
+  position: relative;
+  flex-shrink: 0;
+  background-image: linear-gradient(var(--border-light) 1px, transparent 1px);
+  background-size: 100% 44px;
+}
+
+.gantt-chart-row {
+  position: relative;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-light);
+}
+.gantt-chart-row.group-row {
+  background: rgba(99, 102, 241, 0.04);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+}
+.gantt-chart-row.ghost-row {
+  background: transparent !important;
+}
+
+/* Optional Sticky Compact Side Strip (lives inside scroll body now) */
 .gantt-compact-strip {
   position: sticky;
   left: 0;
@@ -1209,45 +1247,6 @@ a {
 }
 .gantt-compact-row.ghost-row:hover {
   opacity: 0.8;
-}
-
-/* Scrollable Canvas Body */
-.gantt-chart-body-scroll {
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  position: relative;
-  background: #111218;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-.gantt-chart-body-scroll::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
-}
-.gantt-chart-body-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-}
-
-.gantt-chart-body-canvas {
-  position: relative;
-  flex-shrink: 0;
-  background-image: linear-gradient(var(--border-light) 1px, transparent 1px);
-  background-size: 100% 44px;
-}
-
-.gantt-chart-row {
-  position: relative;
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--border-light);
-}
-.gantt-chart-row.group-row {
-  background: rgba(99, 102, 241, 0.04);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.15);
-}
-.gantt-chart-row.ghost-row {
-  background: transparent !important;
 }
 
 /* Sticky Group Label Pinned Left */
@@ -1466,6 +1465,42 @@ a {
 }
 .gantt-context-menu-item.danger:hover {
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* Quick View Option Dropdown Menu */
+.gantt-dropdown-menu {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  background: #161722;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  min-width: 180px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gantt-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s ease;
+  user-select: none;
+}
+.gantt-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.gantt-dropdown-item input[type="checkbox"] {
+  cursor: pointer;
 }
 
 .gantt-quick-create {
