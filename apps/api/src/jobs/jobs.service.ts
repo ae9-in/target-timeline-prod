@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma.service';
-import * as puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
 import { calculateRagStatus } from '../targets/rag.util';
@@ -313,6 +312,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const pdfPath = path.join(this.reportsDir, pdfFileName);
 
     try {
+      const puppeteer = await import('puppeteer');
       browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
