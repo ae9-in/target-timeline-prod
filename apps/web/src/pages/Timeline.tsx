@@ -5,8 +5,8 @@ import {
   Layers, GitBranch,
   BookMarked, Download, FileText, Search,
   RotateCcw, SlidersHorizontal, Calendar,
-  ChevronDown, ChevronRight, User as UserIcon,
-  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2
+  ChevronDown, ChevronRight,
+  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2, List
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGanttData } from '../hooks/useGanttData';
@@ -31,105 +31,6 @@ interface GanttRow {
   groupId?: string; // Links ghost rows to their parent group vertical/owner value
 }
 
-// ─── Cell Editor Component ────────────────────────────────────────────────────
-interface GridCellProps {
-  target: GanttTarget;
-  colId: string;
-  value: string;
-  hasAccess: boolean;
-  onSave: (targetId: string, colId: string, newValue: any) => Promise<void>;
-}
-
-const GridCell: React.FC<GridCellProps> = ({ target, colId, value, hasAccess, onSave }) => {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value);
-
-  useEffect(() => {
-    setVal(value);
-  }, [value]);
-
-  const handleDoubleClick = () => {
-    if (hasAccess && colId !== 'rag') {
-      setEditing(true);
-    }
-  };
-
-  const handleBlur = async () => {
-    setEditing(false);
-    if (val !== value) {
-      await onSave(target.id, colId, val);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleBlur();
-    } else if (e.key === 'Escape') {
-      setVal(value);
-      setEditing(false);
-    }
-  };
-
-  if (editing) {
-    if (colId === 'start' || colId === 'deadline') {
-      const dateVal = val ? new Date(val).toISOString().split('T')[0] : '';
-      return (
-        <input
-          type="date"
-          className="gantt-cell-input"
-          value={dateVal}
-          onChange={(e) => setVal(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
-      );
-    }
-    if (colId === 'progress') {
-      return (
-        <input
-          type="number"
-          min="0"
-          max="100"
-          className="gantt-cell-input"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          autoFocus
-        />
-      );
-    }
-    return (
-      <input
-        type="text"
-        className="gantt-cell-input"
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        autoFocus
-      />
-    );
-  }
-
-  return (
-    <div
-      onDoubleClick={handleDoubleClick}
-      className={`gantt-grid-cell-content ${hasAccess && colId !== 'rag' ? 'editable' : ''}`}
-      title={hasAccess && colId !== 'rag' ? "Double click to edit cell" : undefined}
-    >
-      {colId === 'start' || colId === 'deadline' ? (
-        value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '-'
-      ) : colId === 'progress' ? (
-        `${value}%`
-      ) : (
-        value
-      )}
-    </div>
-  );
-};
-
 // ─── Main Timeline Component ──────────────────────────────────────────────────
 export const Timeline: React.FC = () => {
   const { api, user } = useAuth();
@@ -144,6 +45,12 @@ export const Timeline: React.FC = () => {
   const [filterMilestone, setFilterMilestone] = useState(false);
   const [filterCriticalOnly, setFilterCriticalOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Optional Left scannable index strip (off by default)
+  const [showCompactStrip, setShowCompactStrip] = useState(false);
+
+  // Horizontal Scroll tracking for label pinning
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{
@@ -186,46 +93,6 @@ export const Timeline: React.FC = () => {
   // Canvas Hover guide line X
   const [hoverGuideX, setHoverGuideX] = useState<number | null>(null);
 
-  // Column Widths (state + localStorage cache)
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    const saved = localStorage.getItem('gantt_column_widths');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return { name: 200, owner: 100, start: 80, deadline: 80, progress: 80, rag: 70 };
-  });
-
-  const columns = useMemo(() => [
-    { id: 'name', label: 'Task Name' },
-    { id: 'owner', label: 'Owner' },
-    { id: 'start', label: 'Start' },
-    { id: 'deadline', label: 'Deadline' },
-    { id: 'progress', label: 'Progress' },
-    { id: 'rag', label: 'RAG' }
-  ], []);
-
-  // Responsive / Condensation of columns below 1024px
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const showCondensedGrid = windowWidth < 1024;
-
-  const visibleColumns = useMemo(() => {
-    if (showCondensedGrid) {
-      return columns.filter(col => col.id !== 'owner' && col.id !== 'progress');
-    }
-    return columns;
-  }, [showCondensedGrid, columns]);
-
   // Full Screen State
   const [isFullscreen, setIsFullscreen] = useState(false);
   const ganttPageRef = useRef<HTMLDivElement>(null);
@@ -261,38 +128,6 @@ export const Timeline: React.FC = () => {
     });
   };
 
-  // Drag-to-resize grid column headers
-  const resizingColRef = useRef<string | null>(null);
-  const resizingWidthRef = useRef<number>(0);
-
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, colId: string) => {
-    e.preventDefault();
-    resizingColRef.current = colId;
-    resizingWidthRef.current = columnWidths[colId];
-
-    const startX = e.clientX;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!resizingColRef.current) return;
-      const dx = moveEvent.clientX - startX;
-      const newWidth = Math.max(50, resizingWidthRef.current + dx);
-      setColumnWidths(prev => ({
-        ...prev,
-        [resizingColRef.current!]: newWidth
-      }));
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      resizingColRef.current = null;
-      localStorage.setItem('gantt_column_widths', JSON.stringify(columnWidths));
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [columnWidths]);
-
   // Scroll Sync Refs
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyHorizontalScrollRef = useRef<HTMLDivElement>(null);
@@ -311,8 +146,10 @@ export const Timeline: React.FC = () => {
 
   // Sync scroll left
   const handleHorizontalScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const sl = e.currentTarget.scrollLeft;
+    setScrollLeft(sl);
     if (headerScrollRef.current) {
-      headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+      headerScrollRef.current.scrollLeft = sl;
     }
   }, []);
 
@@ -331,7 +168,6 @@ export const Timeline: React.FC = () => {
     const minStart = new Date(Math.min(...starts));
     const maxEnd = new Date(Math.max(...ends));
 
-    // Pad 1 month to start and end
     const start = new Date(minStart.getFullYear(), minStart.getMonth() - 1, 1);
     const end = new Date(maxEnd.getFullYear(), maxEnd.getMonth() + 2, 1);
 
@@ -346,10 +182,10 @@ export const Timeline: React.FC = () => {
   const pixelsPerDay = useMemo(() => {
     switch (viewMode) {
       case 'Day': return 32;
-      case 'Week': return 8;     // Week is 56px
-      case 'Month': return 2.5;  // Month is 75px
-      case 'Quarter': return 0.8; // Quarter is 72px
-      case 'Year': return 0.2;   // Year is 73px
+      case 'Week': return 8;
+      case 'Month': return 2.5;
+      case 'Quarter': return 0.8;
+      case 'Year': return 0.2;
       default: return 8;
     }
   }, [viewMode]);
@@ -385,7 +221,7 @@ export const Timeline: React.FC = () => {
     const current = new Date(timelineDates.start);
     while (current < timelineDates.end) {
       const day = current.getDay();
-      if (day === 6 || day === 0) { // Saturday or Sunday
+      if (day === 6 || day === 0) {
         const left = dateToX(current);
         const next = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 1);
         const width = dateToX(next) - left;
@@ -421,7 +257,6 @@ export const Timeline: React.FC = () => {
         const left = dateToX(current);
         const next = new Date(current.getFullYear(), current.getMonth(), current.getDate() + 7);
         const width = dateToX(next) - left;
-        // ISO week
         const d = new Date(Date.UTC(current.getFullYear(), current.getMonth(), current.getDate()));
         d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
         const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -496,17 +331,26 @@ export const Timeline: React.FC = () => {
     if (filterCriticalOnly) {
       list = list.filter(t => criticalIds.has(t.id));
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(t =>
-        t.name.toLowerCase().includes(q) ||
-        t.owner.toLowerCase().includes(q) ||
-        t.vertical.toLowerCase().includes(q)
-      );
-    }
-
     return list;
-  }, [localTargets, filterRAG, filterMilestone, filterCriticalOnly, searchQuery, criticalIds]);
+  }, [localTargets, filterRAG, filterMilestone, filterCriticalOnly]);
+
+  // Auto-scroll to first search match on canvas
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    const q = searchQuery.toLowerCase();
+    const matched = filteredTargets.find(t =>
+      t.name.toLowerCase().includes(q) ||
+      t.owner.toLowerCase().includes(q)
+    );
+
+    if (matched && bodyHorizontalScrollRef.current) {
+      const x = dateToX(new Date(matched.startDate));
+      bodyHorizontalScrollRef.current.scrollTo({
+        left: x - 180,
+        behavior: 'smooth'
+      });
+    }
+  }, [searchQuery, filteredTargets, dateToX]);
 
   // Check user permissions for target vertical creation
   const hasEditAccess = useCallback((targetVertical: string) => {
@@ -654,6 +498,14 @@ export const Timeline: React.FC = () => {
     }
     return result;
   }, [viewMode]);
+
+  // Initials for avatar rendering
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   // ── Drag-to-Create Logic ────────────────────────────────────────────────────
   const handleCanvasDragStart = (e: React.MouseEvent, rowIndex: number, rowGroupId?: string) => {
@@ -903,25 +755,6 @@ export const Timeline: React.FC = () => {
       });
     }
   }, [todayX]);
-
-  // Save cell edit inline
-  const handleCellSave = useCallback(async (targetId: string, colId: string, newValue: any) => {
-    try {
-      if (colId === 'name' || colId === 'owner') {
-        await api.patch(`/targets/${targetId}`, { [colId]: newValue });
-      } else if (colId === 'start') {
-        await api.patch(`/targets/${targetId}/schedule`, { startDate: new Date(newValue).toISOString() });
-      } else if (colId === 'deadline') {
-        await api.patch(`/targets/${targetId}/schedule`, { deadline: new Date(newValue).toISOString() });
-      } else if (colId === 'progress') {
-        await api.patch(`/targets/${targetId}/schedule`, { progressPct: Math.min(100, Math.max(0, parseInt(newValue, 10) || 0)) });
-      }
-      refresh();
-    } catch (err) {
-      console.error('Inline cell save failed:', err);
-      refresh();
-    }
-  }, [api, refresh]);
 
   // ── Context Menu Actions ────────────────────────────────────────────────────
   const handleContextMenu = (e: React.MouseEvent, targetId?: string, rowGroupId?: string) => {
@@ -1231,6 +1064,8 @@ export const Timeline: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const totalCanvasHeight = (rows.length + ghostRows.length) * ROW_HEIGHT;
+
   if (loading) {
     return (
       <div className="gantt-loading">
@@ -1247,9 +1082,6 @@ export const Timeline: React.FC = () => {
       </div>
     );
   }
-
-  const totalGridWidth = Object.values(columnWidths).reduce((a, b) => a + b, 0);
-  const totalCanvasHeight = (rows.length + ghostRows.length) * ROW_HEIGHT;
 
   return (
     <div
@@ -1367,6 +1199,14 @@ export const Timeline: React.FC = () => {
           >
             Critical Only
           </button>
+          <button
+            className={`gantt-toggle-btn ${showCompactStrip ? 'active' : ''}`}
+            onClick={() => setShowCompactStrip(!showCompactStrip)}
+            title="Toggle left scannable index list"
+          >
+            <List size={13} />
+            Index Strip
+          </button>
         </div>
 
         {/* Actions */}
@@ -1393,24 +1233,32 @@ export const Timeline: React.FC = () => {
       <div className="gantt-container" onContextMenu={(e) => handleContextMenu(e)}>
         {/* Header Row */}
         <div className="gantt-header-row">
-          {/* Left headers */}
-          <div className="gantt-grid-header" style={{ width: totalGridWidth }}>
-            {visibleColumns.map(col => (
-              <div
-                key={col.id}
-                className="gantt-grid-header-cell"
-                style={{ width: columnWidths[col.id] }}
-              >
-                {col.label}
-                <div
-                  className="gantt-column-resize-handle"
-                  onMouseDown={(e) => handleResizeMouseDown(e, col.id)}
-                />
-              </div>
-            ))}
-          </div>
+          {/* Optional Index Header segment */}
+          {showCompactStrip && (
+            <div
+              className="gantt-compact-row"
+              style={{
+                width: '200px',
+                position: 'sticky',
+                left: 0,
+                background: '#0f1019',
+                borderRight: '1px solid var(--border-color)',
+                zIndex: 25,
+                fontWeight: 700,
+                fontSize: '10px',
+                color: 'var(--text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              Task Index
+            </div>
+          )}
 
-          {/* Right calendar scale (header) */}
+          {/* Date scale (header) */}
           <div className="gantt-chart-header-scroll" ref={headerScrollRef}>
             <div className="gantt-chart-header-canvas" style={{ width: totalTimelineWidth }}>
               {headerTicks.map((tick, idx) => (
@@ -1439,196 +1287,61 @@ export const Timeline: React.FC = () => {
         {/* Body Container */}
         {rows.length > 0 && (
           <div className="gantt-body-row" ref={bodyRowRef}>
-            {/* Left columns grid */}
-            <div className="gantt-grid-body" style={{ width: totalGridWidth }}>
-              {rows.map((row) => {
-                const isSelected = row.type === 'task' && row.id === hoveredTask?.task.id;
-                const isGroup = row.type === 'group';
-                const isGhost = row.type === 'ghost';
-                const access = row.target ? hasEditAccess(row.target.vertical) : false;
+            {/* Optional Left Compact Index Strip - Scrolling Sync is native via sticky */}
+            {showCompactStrip && (
+              <div className="gantt-compact-strip">
+                {rows.map((row) => {
+                  const isGroup = row.type === 'group';
+                  const isGhost = row.type === 'ghost';
+                  const active = row.target && searchQuery.trim() && (
+                    row.target.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    row.target.owner.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
 
-                if (isGhost) {
                   return (
                     <div
                       key={row.id}
-                      className="gantt-grid-row ghost-row"
-                      style={{ height: ROW_HEIGHT }}
-                      onClick={(e) => hasEditAccess(row.groupId || 'Sales') && handleEmptyRowClick(e, row.groupId)}
-                      onContextMenu={(e) => handleContextMenu(e, undefined, row.groupId)}
+                      className={`gantt-compact-row ${isGroup ? 'group-row' : ''} ${isGhost ? 'ghost-row' : ''}`}
+                      style={{
+                        height: ROW_HEIGHT,
+                        background: active ? 'var(--color-primary-glow)' : undefined
+                      }}
+                      onClick={(e) => {
+                        if (isGroup) handleGroupToggle(row.id);
+                        if (isGhost) hasEditAccess(row.groupId || 'Sales') && handleEmptyRowClick(e, row.groupId);
+                      }}
                     >
-                      <div className="gantt-grid-cell" style={{ width: totalGridWidth, borderRight: 'none' }}>
-                        <span className="gantt-add-affordance-text">
-                          <Plus size={12} /> {row.label}
-                        </span>
-                      </div>
+                      {!isGroup && !isGhost && row.target && (
+                        <span
+                          className={`badge-dot ${row.target.ragStatus.toLowerCase()}`}
+                          style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            display: 'inline-block',
+                            background: `var(--color-rag-${row.target.ragStatus.toLowerCase()})`
+                          }}
+                        />
+                      )}
+                      <strong>{row.label}</strong>
                     </div>
                   );
-                }
+                })}
 
-                return (
+                {/* Ghost index rows */}
+                {ghostRows.map((index) => (
                   <div
-                    key={row.id}
-                    className={`gantt-grid-row ${isSelected ? 'selected' : ''} ${isGroup ? 'group-row' : ''}`}
+                    key={`ghost-index-${index}`}
+                    className="gantt-compact-row ghost-row"
                     style={{ height: ROW_HEIGHT }}
-                    onClick={() => isGroup && handleGroupToggle(row.id)}
-                    onContextMenu={(e) => handleContextMenu(e, row.id, isGroup ? undefined : row.target?.vertical)}
+                    onClick={(e) => hasEditAccess('Sales') && handleEmptyRowClick(e)}
                   >
-                    {/* Task Name Column */}
-                    {showCondensedGrid || visibleColumns.some(c => c.id === 'name') ? (
-                      <div className="gantt-grid-cell name-col" style={{ width: columnWidths.name }}>
-                        {isGroup ? (
-                          collapsedGroups.has(row.id) ? (
-                            <ChevronRight size={14} className="group-chevron" />
-                          ) : (
-                            <ChevronDown size={14} className="group-chevron" />
-                          )
-                        ) : row.target?.isMilestone ? (
-                          <span className="milestone-diamond">◆</span>
-                        ) : null}
-                        {showCritical && row.target && criticalIds.has(row.target.id) && (
-                          <span className="critical-dot" title="Critical path" />
-                        )}
-
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {isGroup ? (
-                            <strong>{row.label}</strong>
-                          ) : row.target ? (
-                            <GridCell
-                              target={row.target}
-                              colId="name"
-                              value={row.label}
-                              hasAccess={access}
-                              onSave={handleCellSave}
-                            />
-                          ) : (
-                            row.label
-                          )}
-                          {row.target && showCondensedGrid && (
-                            <div className="gantt-grid-cell-subtitle">
-                              Owner: {row.target.owner} | {row.target.progressPct}%
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Owner Column */}
-                    {!showCondensedGrid && visibleColumns.some(c => c.id === 'owner') ? (
-                      <div className="gantt-grid-cell" style={{ width: columnWidths.owner }}>
-                        {row.target ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <UserIcon size={12} style={{ opacity: 0.6 }} />
-                            <GridCell
-                              target={row.target}
-                              colId="owner"
-                              value={row.target.owner}
-                              hasAccess={access}
-                              onSave={handleCellSave}
-                            />
-                          </div>
-                        ) : isGroup ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Group Rollup</span>
-                        ) : '-'}
-                      </div>
-                    ) : null}
-
-                    {/* Start Date Column */}
-                    {visibleColumns.some(c => c.id === 'start') ? (
-                      <div className="gantt-grid-cell center-col" style={{ width: columnWidths.start }}>
-                        {row.target ? (
-                          <GridCell
-                            target={row.target}
-                            colId="start"
-                            value={row.target.startDate}
-                            hasAccess={access}
-                            onSave={handleCellSave}
-                          />
-                        ) : row.startDate ? (
-                          new Date(row.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-                        ) : '-'}
-                      </div>
-                    ) : null}
-
-                    {/* Deadline Column */}
-                    {visibleColumns.some(c => c.id === 'deadline') ? (
-                      <div className="gantt-grid-cell center-col" style={{ width: columnWidths.deadline }}>
-                        {row.target ? (
-                          <GridCell
-                            target={row.target}
-                            colId="deadline"
-                            value={row.target.deadline}
-                            hasAccess={access}
-                            onSave={handleCellSave}
-                          />
-                        ) : row.deadline ? (
-                          new Date(row.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
-                        ) : '-'}
-                      </div>
-                    ) : null}
-
-                    {/* Progress Column */}
-                    {!showCondensedGrid && visibleColumns.some(c => c.id === 'progress') ? (
-                      <div className="gantt-grid-cell" style={{ width: columnWidths.progress }}>
-                        {row.target ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
-                            <div className="grid-progress-wrap" style={{ flexGrow: 1 }}>
-                              <div
-                                className="grid-progress-bar"
-                                style={{
-                                  width: `${row.target.progressPct}%`,
-                                  background: `var(--color-rag-${row.target.ragStatus.toLowerCase()})`
-                                }}
-                              />
-                            </div>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', minWidth: '26px', textAlign: 'right' }}>
-                              {row.target.progressPct}%
-                            </span>
-                          </div>
-                        ) : row.progress !== undefined ? (
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{row.progress}%</span>
-                        ) : '-'}
-                      </div>
-                    ) : null}
-
-                    {/* RAG Status Column */}
-                    {visibleColumns.some(c => c.id === 'rag') ? (
-                      <div className="gantt-grid-cell center-col" style={{ width: columnWidths.rag }}>
-                        {row.target ? (
-                          <span className={`badge ${row.target.ragStatus.toLowerCase()}`}>
-                            {row.target.ragStatus}
-                          </span>
-                        ) : '-'}
-                      </div>
-                    ) : null}
+                    <Plus size={10} style={{ opacity: 0.6 }} />
+                    <span style={{ color: 'var(--text-muted)' }}>+ Add target...</span>
                   </div>
-                );
-              })}
-
-              {/* Ghost rows at the bottom of the grid to visually continue to the edge */}
-              {ghostRows.map((index) => (
-                <div
-                  key={`ghost-grid-${index}`}
-                  className="gantt-grid-row ghost-row"
-                  style={{ height: ROW_HEIGHT }}
-                  onClick={(e) => hasEditAccess('Sales') && handleEmptyRowClick(e)}
-                  onContextMenu={(e) => handleContextMenu(e, undefined)}
-                >
-                  {visibleColumns.map(col => (
-                    <div
-                      key={col.id}
-                      className="gantt-grid-cell"
-                      style={{ width: columnWidths[col.id] }}
-                    >
-                      {col.id === 'name' && (
-                        <span className="gantt-add-affordance-text">
-                          <Plus size={12} /> + Add target...
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {/* Right chart canvas grid */}
             <div
@@ -1722,6 +1435,10 @@ export const Timeline: React.FC = () => {
                         onMouseDown={(e) => handleCanvasDragStart(e, idx, row.groupId)}
                         onContextMenu={(e) => handleContextMenu(e, undefined, row.groupId)}
                       >
+                        <span className="gantt-add-affordance-text" style={{ position: 'absolute', left: scrollLeft + 16, top: '13px' }}>
+                          <Plus size={12} /> {row.label}
+                        </span>
+
                         {/* Drag preview bar if active */}
                         {dragCreate && dragCreate.rowIndex === idx && (
                           <div
@@ -1737,10 +1454,6 @@ export const Timeline: React.FC = () => {
                   }
 
                   if (isGroup) {
-                    const xStart = dateToX(new Date(row.startDate!));
-                    const xEnd = dateToX(new Date(row.deadline!));
-                    const width = Math.max(8, xEnd - xStart);
-
                     return (
                       <div
                         key={row.id}
@@ -1749,27 +1462,18 @@ export const Timeline: React.FC = () => {
                           height: ROW_HEIGHT,
                           width: totalTimelineWidth
                         }}
+                        onClick={() => handleGroupToggle(row.id)}
                       >
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: xStart,
-                            width,
-                            top: '12px',
-                            height: '8px',
-                            background: 'rgba(99, 102, 241, 0.4)',
-                            borderRadius: '3px'
-                          }}
-                          title={`Group Progress: ${row.progress}%`}
-                        >
-                          <div
-                            style={{
-                              height: '100%',
-                              width: `${row.progress}%`,
-                              background: 'var(--color-primary)',
-                              borderRadius: '3px'
-                            }}
-                          />
+                        <div className="gantt-group-sticky-label" style={{ left: scrollLeft + 16 }}>
+                          {collapsedGroups.has(row.id) ? (
+                            <ChevronRight size={14} />
+                          ) : (
+                            <ChevronDown size={14} />
+                          )}
+                          <strong>{row.label}</strong>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'none', marginLeft: '8px' }}>
+                            ({row.progress}% Rollup)
+                          </span>
                         </div>
                       </div>
                     );
@@ -1782,6 +1486,17 @@ export const Timeline: React.FC = () => {
                   const barWidth = Math.max(8, xEnd - xStart);
                   const access = hasEditAccess(t.vertical);
 
+                  // Search highlight checks
+                  const isSearchActive = searchQuery.trim().length > 0;
+                  const isSearchMatch = isSearchActive && (
+                    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.owner.toLowerCase().includes(searchQuery.toLowerCase())
+                  );
+
+                  // Label Rendering positions
+                  const insideFits = barWidth > 180;
+                  const leftRooms = xStart > scrollLeft + 200;
+
                   return (
                     <div
                       key={t.id}
@@ -1792,29 +1507,106 @@ export const Timeline: React.FC = () => {
                       }}
                       onContextMenu={(e) => handleContextMenu(e, t.id, t.vertical)}
                     >
-                      {t.isMilestone ? (
+                      {/* Floating Label to the left of the bar */}
+                      {!insideFits && leftRooms && (
                         <div
-                          className="gantt-milestone-marker"
+                          className="gantt-label-floating"
                           style={{
-                            position: 'absolute',
-                            left: xStart - 6,
-                            top: '50%',
-                            transform: 'translateY(-50%) rotate(45deg)',
-                            width: '12px',
-                            height: '12px',
-                            background: 'var(--color-accent)',
-                            boxShadow: '0 0 8px var(--color-accent-glow)',
-                            cursor: access ? 'grab' : 'default',
-                            zIndex: 4
+                            left: xStart - 190,
+                            width: 180,
+                            height: '100%',
+                            justifyContent: 'flex-end',
+                            color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
                           }}
-                          onMouseDown={(e) => access && handleBarMouseDown(e, t.id, 'move')}
-                          onMouseEnter={(e) => handleMouseEnter(e, t)}
-                          onMouseLeave={handleMouseLeave}
-                          title={`${t.name} (Milestone)`}
-                        />
+                        >
+                          <div className="gantt-avatar-badge" title={t.owner}>
+                            {getInitials(t.owner)}
+                          </div>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.name}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Sticky Floating Label pinned at viewport boundary if scrolled past bar start */}
+                      {!insideFits && !leftRooms && xStart <= scrollLeft && xEnd > scrollLeft + 30 && (
+                        <div
+                          className="gantt-label-floating"
+                          style={{
+                            left: scrollLeft + 12,
+                            height: '100%',
+                            zIndex: 10,
+                            background: 'rgba(17, 18, 24, 0.85)',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--border-color)',
+                            color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                          }}
+                        >
+                          <div className="gantt-avatar-badge" title={t.owner}>
+                            {getInitials(t.owner)}
+                          </div>
+                          <span>{t.name}</span>
+                        </div>
+                      )}
+
+                      {/* Floating Label to the right of the bar (if neither fits inside nor has space left) */}
+                      {!insideFits && !leftRooms && xStart > scrollLeft && (
+                        <div
+                          className="gantt-label-floating"
+                          style={{
+                            left: xEnd + 8,
+                            height: '100%',
+                            color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                          }}
+                        >
+                          <div className="gantt-avatar-badge" title={t.owner}>
+                            {getInitials(t.owner)}
+                          </div>
+                          <span>{t.name}</span>
+                        </div>
+                      )}
+
+                      {/* Bar rendering */}
+                      {t.isMilestone ? (
+                        <>
+                          <div
+                            className="gantt-milestone-marker"
+                            style={{
+                              position: 'absolute',
+                              left: xStart - 6,
+                              top: '50%',
+                              transform: 'translateY(-50%) rotate(45deg)',
+                              width: '12px',
+                              height: '12px',
+                              background: 'var(--color-accent)',
+                              boxShadow: '0 0 8px var(--color-accent-glow)',
+                              cursor: access ? 'grab' : 'default',
+                              zIndex: 4
+                            }}
+                            onMouseDown={(e) => access && handleBarMouseDown(e, t.id, 'move')}
+                            onMouseEnter={(e) => handleMouseEnter(e, t)}
+                            onMouseLeave={handleMouseLeave}
+                            title={`${t.name} (Milestone)`}
+                          />
+                          {/* Floating Right Label for milestones */}
+                          <div
+                            className="gantt-label-floating"
+                            style={{
+                              left: xStart + 12,
+                              height: '100%',
+                              color: isSearchActive && !isSearchMatch ? 'rgba(255,255,255,0.2)' : 'var(--text-primary)'
+                            }}
+                          >
+                            <div className="gantt-avatar-badge" title={t.owner}>
+                              {getInitials(t.owner)}
+                            </div>
+                            <span>{t.name}</span>
+                          </div>
+                        </>
                       ) : (
                         <div
-                          className={`gantt-task-bar-wrapper ${isCritical ? 'critical' : ''}`}
+                          className={`gantt-task-bar-wrapper ${isCritical ? 'critical' : ''} ${isSearchMatch ? 'search-match' : ''} ${isSearchActive && !isSearchMatch ? 'search-dimmed' : ''}`}
                           style={{
                             left: xStart,
                             width: barWidth,
@@ -1833,6 +1625,24 @@ export const Timeline: React.FC = () => {
                                 background: `var(--color-rag-${t.ragStatus.toLowerCase()})`
                               }}
                             />
+
+                            {/* Label Inside Bar (if it fits) */}
+                            {insideFits && (
+                              <div
+                                className="gantt-label-inside"
+                                style={{
+                                  left: Math.max(6, Math.min(barWidth - 140, scrollLeft - xStart + 6))
+                                }}
+                              >
+                                <div className="gantt-avatar-badge" title={t.owner}>
+                                  {getInitials(t.owner)}
+                                </div>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {t.name} ({t.progressPct}%)
+                                </span>
+                              </div>
+                            )}
+
                             {access && (
                               <div
                                 className="gantt-task-bar-progress-handle"
@@ -1857,9 +1667,9 @@ export const Timeline: React.FC = () => {
                             position: 'absolute',
                             left: dateToX(new Date(t.latestBaseline.baselineStart)),
                             width: Math.max(6, dateToX(new Date(t.latestBaseline.baselineEnd)) - dateToX(new Date(t.latestBaseline.baselineStart))),
-                            top: '26px',
-                            height: '10px',
-                            borderRadius: '3px',
+                            top: '31px',
+                            height: '6px',
+                            borderRadius: '2px',
                             background: 'rgba(148, 163, 184, 0.15)',
                             border: '1px dashed rgba(148, 163, 184, 0.4)',
                             pointerEvents: 'none'
@@ -1884,6 +1694,10 @@ export const Timeline: React.FC = () => {
                       onMouseDown={(e) => handleCanvasDragStart(e, actualRowIdx)}
                       onContextMenu={(e) => handleContextMenu(e, undefined)}
                     >
+                      <span className="gantt-add-affordance-text" style={{ position: 'absolute', left: scrollLeft + 16, top: '13px' }}>
+                        <Plus size={12} /> + Add target...
+                      </span>
+
                       {/* Drag preview bar if active */}
                       {dragCreate && dragCreate.rowIndex === actualRowIdx && (
                         <div
@@ -2138,7 +1952,7 @@ export const Timeline: React.FC = () => {
         )}
         <div className="gantt-legend-item" style={{ marginLeft: 'auto', opacity: 0.6 }}>
           <Info size={12} style={{ display: 'inline-block', marginRight: '4px' }} />
-          Double click cells to edit | Right click canvas for context menu | Press N to add target
+          Right click canvas for context menu | Drag on empty rows to schedule | Press N to add target
         </div>
       </div>
     </div>
