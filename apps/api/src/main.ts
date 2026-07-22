@@ -40,8 +40,8 @@ async function bootstrap() {
   return cachedServer;
 }
 
-// For local running
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+// For non-Vercel environments (Local development & Render production)
+if (!process.env.VERCEL) {
   bootstrap().then(async (server) => {
     const port = process.env.PORT ?? 3000;
     await new Promise<void>((resolve, reject) => {
@@ -50,7 +50,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
         resolve();
       });
     });
-    console.log(`Backend API is running locally on: http://localhost:${port}`);
+    console.log(`Backend API is running on: http://localhost:${port}`);
   });
 }
 
