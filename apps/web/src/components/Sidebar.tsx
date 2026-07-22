@@ -11,7 +11,8 @@ import {
   AlertTriangle, 
   FileText, 
   LogOut,
-  Building2
+  Building2,
+  MapPin,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -37,6 +38,8 @@ export const Sidebar: React.FC = () => {
     ...(showAnalytics ? [{ name: 'Analytics', path: '/analytics', icon: BarChart3 }] : []),
     { name: 'Alerts & Risks', path: '/alerts', icon: AlertTriangle },
     ...(showReports ? [{ name: 'Weekly Reports', path: '/reports', icon: FileText }] : []),
+    // Admin-only
+    ...(isSuperAdmin ? [{ name: 'Locations', path: '/admin/locations', icon: MapPin }] : []),
   ];
 
   return (

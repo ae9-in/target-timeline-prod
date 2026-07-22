@@ -28,7 +28,7 @@ export class TargetsService {
 
   async findAll(
     userVerticals: string[],
-    filters: { vertical?: string; owner?: string; status?: string },
+    filters: { vertical?: string; owner?: string; status?: string; locationId?: string },
   ) {
     const where: any = {};
 
@@ -46,6 +46,10 @@ export class TargetsService {
 
     if (filters.owner) {
       where.owner = filters.owner;
+    }
+
+    if (filters.locationId) {
+      where.locationId = filters.locationId;
     }
 
     const targets = await this.prisma.target.findMany({
@@ -98,6 +102,7 @@ export class TargetsService {
         isMilestone: dto.isMilestone ?? false,
         wbsParentId: dto.wbsParentId || null,
         progressPct: dto.progressPct ?? 0,
+        locationId: dto.locationId || null,
         createdBy: userId,
       },
     });
@@ -172,6 +177,7 @@ export class TargetsService {
         ...(dto.isMilestone !== undefined && { isMilestone: dto.isMilestone }),
         ...(dto.wbsParentId !== undefined && { wbsParentId: dto.wbsParentId }),
         ...(dto.progressPct !== undefined && { progressPct: dto.progressPct }),
+        ...(dto.locationId !== undefined && { locationId: dto.locationId || null }),
       },
     });
 

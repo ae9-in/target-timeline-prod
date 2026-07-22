@@ -48,6 +48,10 @@ export class CreateTargetDto {
   @IsNumber()
   @IsOptional()
   progressPct?: number;
+
+  @IsString()
+  @IsOptional()
+  locationId?: string;
 }
 
 export class UpdateTargetDto {
@@ -103,4 +107,8 @@ export class UpdateTargetDto {
   @IsNumber()
   @IsOptional()
   progressPct?: number;
+
+  @IsString()
+  @IsOptional()
+  locationId?: string;
 }

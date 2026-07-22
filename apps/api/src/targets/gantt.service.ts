@@ -20,6 +20,7 @@ export class GanttService {
     userVerticals: string[],
     vertical?: string,
     groupBy?: string,
+    locationId?: string,
   ) {
     const where: any = {};
     if (userVerticals.length > 0) where.vertical = { in: userVerticals };
@@ -27,16 +28,20 @@ export class GanttService {
       if (userVerticals.length > 0 && !userVerticals.includes(vertical)) return [];
       where.vertical = vertical;
     }
+    if (locationId) {
+      where.locationId = locationId;
+    }
 
     const targets = await this.prisma.target.findMany({
       where,
       include: {
-        dependencies: true,  // TargetDependency[] where this target is successor
-        dependents: true,    // TargetDependency[] where this target is predecessor
+        dependencies: true,
+        dependents: true,
         baselines: {
           orderBy: { capturedAt: 'desc' },
           take: 1,
         },
+        location: { select: { id: true, name: true } },
       },
       orderBy: { startDate: 'asc' },
     });
@@ -57,6 +62,7 @@ export class GanttService {
       };
     });
   }
+
 
   /**
    * Add a dependency from predecessorId → targetId (the target is the successor).

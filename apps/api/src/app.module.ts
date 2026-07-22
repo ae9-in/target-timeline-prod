@@ -11,6 +11,7 @@ import { ReportsModule } from './reports/reports.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { UsersModule } from './users/users.module';
 import { AuditModule } from './audit/audit.module';
+import { LocationsModule } from './locations/locations.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AuditModule } from './audit/audit.module';
     AnalyticsModule,
     UsersModule,
     AuditModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

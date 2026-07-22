@@ -38,10 +38,11 @@ export class TargetsController {
   async getGanttData(
     @Query('vertical') vertical?: string,
     @Query('groupBy') groupBy?: string,
+    @Query('locationId') locationId?: string,
     @Req() req?: any,
   ) {
     const userVerticals = req.user.verticalScope || [];
-    return this.ganttService.getGanttData(userVerticals, vertical, groupBy);
+    return this.ganttService.getGanttData(userVerticals, vertical, groupBy, locationId);
   }
 
   @Get('critical-path')
@@ -74,10 +75,11 @@ export class TargetsController {
     @Query('vertical') vertical?: string,
     @Query('owner') owner?: string,
     @Query('status') status?: string,
+    @Query('locationId') locationId?: string,
     @Req() req?: any,
   ) {
     const userVerticals = req.user.verticalScope || [];
-    return this.targetsService.findAll(userVerticals, { vertical, owner, status });
+    return this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId });
   }
 
   @Get(':id')

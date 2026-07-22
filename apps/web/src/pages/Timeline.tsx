@@ -7,10 +7,11 @@ import {
   RotateCcw, SlidersHorizontal, Calendar,
   ChevronDown, ChevronRight, ChevronLeft,
   Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2, Sliders, X,
-  Crosshair
+  Crosshair, MapPin
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDepartments } from '../context/DepartmentContext';
+import { useLocations } from '../context/LocationContext';
 import { useGanttData } from '../hooks/useGanttData';
 import type { GanttTarget, ZoomLevelConfig } from '../utils/gantt-transform';
 import { targetsToCSV, computeDateScale } from '../utils/gantt-transform';
@@ -38,6 +39,7 @@ interface GanttRow {
 export const Timeline: React.FC = () => {
   const { api, user } = useAuth();
   const { departments } = useDepartments();
+  const { locations } = useLocations();
   const navigate = useNavigate();
 
   // Settings / filters
@@ -48,6 +50,7 @@ export const Timeline: React.FC = () => {
   const [filterRAG, setFilterRAG] = useState<FilterRAG>('ALL');
   const [filterMilestone, setFilterMilestone] = useState(false);
   const [filterCriticalOnly, setFilterCriticalOnly] = useState(false);
+  const [filterLocation, setFilterLocation] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Custom range states
@@ -118,6 +121,7 @@ export const Timeline: React.FC = () => {
   const [qcName, setQcName] = useState('');
   const [qcOwner, setQcOwner] = useState(user?.name || '');
   const [qcVertical, setQcVertical] = useState(() => departments[0]?.name || '');
+  const [qcLocationId, setQcLocationId] = useState('');
   const [qcError, setQcError] = useState<string | null>(null);
 
   // Edit Target & Progress Modal State
@@ -471,8 +475,11 @@ export const Timeline: React.FC = () => {
     if (filterCriticalOnly) {
       list = list.filter(t => criticalIds.has(t.id));
     }
+    if (filterLocation !== 'all') {
+      list = list.filter(t => (t as any).locationId === filterLocation);
+    }
     return list;
-  }, [localTargets, filterRAG, filterMilestone, filterCriticalOnly]);
+  }, [localTargets, filterRAG, filterMilestone, filterCriticalOnly, filterLocation]);
 
   // Auto-scroll to first search match on canvas
   useEffect(() => {
@@ -1158,7 +1165,8 @@ export const Timeline: React.FC = () => {
         targetValue: 100,
         currentValue: 0,
         unit: '%',
-        direction: 'up'
+        direction: 'up',
+        locationId: qcLocationId || null,
       });
 
       if (res.data) {
@@ -1538,6 +1546,23 @@ export const Timeline: React.FC = () => {
             <option value="RED">Red</option>
           </select>
         </div>
+
+        {/* Location Filter */}
+        {locations.length > 0 && (
+          <div className="gantt-toolbar-group">
+            <span className="gantt-toolbar-label">
+              <MapPin size={13} /> Location
+            </span>
+            <select
+              className="gantt-select"
+              value={filterLocation}
+              onChange={(e) => setFilterLocation(e.target.value)}
+            >
+              <option value="all">All Locations</option>
+              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+        )}
 
         {/* View Options unified Dropdown to prevent screen cutoff */}
         <div className="gantt-toolbar-group" style={{ position: 'relative' }}>
@@ -2205,6 +2230,18 @@ export const Timeline: React.FC = () => {
                 ))}
               </select>
             </div>
+            {locations.length > 0 && (
+              <div className="gantt-quick-create-row">
+                <label><MapPin size={11} style={{ marginRight: '3px', verticalAlign: 'middle' }} />Location</label>
+                <select
+                  value={qcLocationId}
+                  onChange={(e) => setQcLocationId(e.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="gantt-quick-create-row">
               <label>Dates</label>
               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -2335,6 +2372,12 @@ export const Timeline: React.FC = () => {
             <span>Vertical:</span>
             <span>{hoveredTask.task.vertical}</span>
           </div>
+          {(hoveredTask.task as any).location?.name && (
+            <div className="gantt-tooltip-row">
+              <span><MapPin size={10} style={{ verticalAlign: 'middle' }} /> Location:</span>
+              <span style={{ color: '#93c5fd' }}>{(hoveredTask.task as any).location.name}</span>
+            </div>
+          )}
           <div className="gantt-tooltip-row">
             <span>RAG Status:</span>
             <span className={`badge ${hoveredTask.task.ragStatus.toLowerCase()}`} style={{ display: 'inline-block' }}>

@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useDepartments } from '../context/DepartmentContext';
+import { useLocations } from '../context/LocationContext';
 import ReactECharts from 'echarts-for-react';
+import { MapPin } from 'lucide-react';
 
 export const DepartmentPerformance: React.FC = () => {
   const { api } = useAuth();
   const { departments } = useDepartments();
+  const { locations } = useLocations();
   const [targets, setTargets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
 
   useEffect(() => {
     const fetchTargets = async () => {
@@ -28,11 +32,19 @@ export const DepartmentPerformance: React.FC = () => {
     return <div className="text-center" style={{ padding: '40px' }}>Loading performance analytics...</div>;
   }
 
+  // Filter departments and targets by selected location
+  const scopedDepts = selectedLocationId === 'all'
+    ? departments
+    : departments.filter(d => d.locationId === selectedLocationId);
+  const scopedTargets = selectedLocationId === 'all'
+    ? targets
+    : targets.filter(t => t.locationId === selectedLocationId);
+
   // Calculate stats by department dynamically
-  const verticals = departments.map((d) => d.name);
+  const verticals = scopedDepts.map((d) => d.name);
   
   const performanceData = verticals.map(v => {
-    const vTargets = targets.filter(t => t.vertical === v);
+    const vTargets = scopedTargets.filter(t => t.vertical === v);
     const total = vTargets.length;
     const green = vTargets.filter(t => t.ragStatus === 'GREEN').length;
     const amber = vTargets.filter(t => t.ragStatus === 'AMBER').length;
@@ -162,6 +174,34 @@ export const DepartmentPerformance: React.FC = () => {
 
   return (
     <div className="content-container">
+      {/* Location Filter */}
+      {locations.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          marginBottom: '20px', flexWrap: 'wrap',
+          padding: '10px 16px',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '10px',
+        }}>
+          <MapPin size={15} style={{ color: 'var(--text-muted)' }} />
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Location:</span>
+          {[{ id: 'all', name: 'All Locations' }, ...locations].map(loc => (
+            <button
+              key={loc.id}
+              onClick={() => setSelectedLocationId(loc.id)}
+              style={{
+                padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 500,
+                cursor: 'pointer', border: 'none',
+                background: selectedLocationId === loc.id ? 'var(--color-primary)' : 'rgba(255,255,255,0.06)',
+                color: selectedLocationId === loc.id ? '#fff' : 'var(--text-muted)',
+              }}
+            >
+              {loc.name}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Grid of Department Stats Summary */}
       <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {performanceData.map(d => (

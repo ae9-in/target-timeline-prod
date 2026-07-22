@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useDepartments } from '../context/DepartmentContext';
 import type { Department } from '../context/DepartmentContext';
+import { useLocations } from '../context/LocationContext';
 import { 
-  Building2, Plus, Edit2, Trash2, Search, X, Check, User
+  Building2, Plus, Edit2, Trash2, Search, X, Check, User, MapPin
 } from 'lucide-react';
 
 const PRESET_COLORS = [
@@ -20,8 +21,10 @@ const PRESET_COLORS = [
 
 export const DepartmentManagement: React.FC = () => {
   const { departments, addDepartment, updateDepartment, deleteDepartment } = useDepartments();
+  const { locations } = useLocations();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -32,6 +35,7 @@ export const DepartmentManagement: React.FC = () => {
   const [formColor, setFormColor] = useState(PRESET_COLORS[0]);
   const [formLead, setFormLead] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const [formLocationId, setFormLocationId] = useState('');
 
   const openCreateModal = () => {
     setEditingDept(null);
@@ -40,6 +44,7 @@ export const DepartmentManagement: React.FC = () => {
     setFormColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
     setFormLead('');
     setFormDescription('');
+    setFormLocationId(locations[0]?.id || '');
     setIsModalOpen(true);
   };
 
@@ -50,6 +55,7 @@ export const DepartmentManagement: React.FC = () => {
     setFormColor(dept.color);
     setFormLead(dept.lead || '');
     setFormDescription(dept.description || '');
+    setFormLocationId(dept.locationId || locations[0]?.id || '');
     setIsModalOpen(true);
   };
 
@@ -61,6 +67,7 @@ export const DepartmentManagement: React.FC = () => {
       ? formCode.trim().toUpperCase()
       : formName.trim().substring(0, 3).toUpperCase();
 
+    const selectedLoc = locations.find(l => l.id === formLocationId);
     if (editingDept) {
       updateDepartment(editingDept.id, {
         name: formName.trim(),
@@ -68,6 +75,8 @@ export const DepartmentManagement: React.FC = () => {
         color: formColor,
         lead: formLead.trim() || 'Unassigned',
         description: formDescription.trim(),
+        locationId: formLocationId || undefined,
+        locationName: selectedLoc?.name || undefined,
       });
     } else {
       addDepartment({
@@ -76,6 +85,8 @@ export const DepartmentManagement: React.FC = () => {
         color: formColor,
         lead: formLead.trim() || 'Unassigned',
         description: formDescription.trim(),
+        locationId: formLocationId || undefined,
+        locationName: selectedLoc?.name || undefined,
       });
     }
 
@@ -89,11 +100,13 @@ export const DepartmentManagement: React.FC = () => {
     }
   };
 
-  const filteredDepartments = departments.filter((d) =>
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.lead && d.lead.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredDepartments = departments.filter((d) => {
+    const matchSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (d.lead && d.lead.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchLoc = locationFilter === 'all' || d.locationId === locationFilter;
+    return matchSearch && matchLoc;
+  });
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto', color: 'var(--text-primary)' }}>
@@ -160,7 +173,7 @@ export const DepartmentManagement: React.FC = () => {
           marginBottom: '28px'
         }}
       >
-        <div style={{ position: 'relative', width: '320px' }}>
+        <div style={{ position: 'relative', width: '280px' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             type="text"
@@ -178,6 +191,24 @@ export const DepartmentManagement: React.FC = () => {
               outline: 'none'
             }}
           />
+        </div>
+
+        {/* Location Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={15} style={{ color: 'var(--text-muted)' }} />
+          <select
+            value={locationFilter}
+            onChange={e => setLocationFilter(e.target.value)}
+            style={{
+              padding: '7px 12px', borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              background: 'rgba(0,0,0,0.2)', color: '#fff',
+              fontSize: '13px', outline: 'none', cursor: 'pointer',
+            }}
+          >
+            <option value="all">All Locations</option>
+            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
         </div>
 
         <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -241,10 +272,24 @@ export const DepartmentManagement: React.FC = () => {
               </div>
 
               {/* Lead & Description */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '6px' }}>
                 <User size={14} style={{ color: dept.color }} />
                 <span>Lead: <strong style={{ color: '#e5e7eb' }}>{dept.lead || 'Unassigned'}</strong></span>
               </div>
+
+              {/* Location Badge */}
+              {dept.locationName && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  <MapPin size={12} style={{ color: '#60a5fa' }} />
+                  <span style={{ color: '#93c5fd' }}>{dept.locationName}</span>
+                </div>
+              )}
+              {!dept.locationName && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.25)', marginBottom: '8px' }}>
+                  <MapPin size={12} />
+                  <span>No location assigned</span>
+                </div>
+              )}
 
               <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.5, minHeight: '40px' }}>
                 {dept.description || 'No description provided.'}
@@ -439,6 +484,33 @@ export const DepartmentManagement: React.FC = () => {
                     outline: 'none'
                   }}
                 />
+              </div>
+
+              {/* Location */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  <MapPin size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                  Location *
+                </label>
+                <select
+                  required
+                  value={formLocationId}
+                  onChange={e => setFormLocationId(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px',
+                    borderRadius: '8px', border: '1px solid var(--border-color)',
+                    background: '#0d0e15', color: '#ffffff', fontSize: '14px',
+                    outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Select a location...</option>
+                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+                {locations.length === 0 && (
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#f59e0b' }}>
+                    No locations available. Ask an Admin to create locations first.
+                  </p>
+                )}
               </div>
 
               {/* Color Swatches */}

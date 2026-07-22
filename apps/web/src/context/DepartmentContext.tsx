@@ -8,6 +8,8 @@ export interface Department {
   lead?: string;
   description?: string;
   isSystem?: boolean;
+  locationId?: string;
+  locationName?: string;
 }
 
 interface DepartmentContextType {
@@ -21,8 +23,8 @@ interface DepartmentContextType {
 const DEFAULT_DEPARTMENTS: Department[] = [];
 
 // Bump version whenever a clean slate is needed (removes stale/dummy data from old keys)
-const STORAGE_KEY = 'targettrack_departments_v3';
-const STALE_KEYS = ['targettrack_departments', 'targettrack_departments_v1', 'targettrack_departments_v2'];
+const STORAGE_KEY = 'targettrack_departments_v4';
+const STALE_KEYS = ['targettrack_departments', 'targettrack_departments_v1', 'targettrack_departments_v2', 'targettrack_departments_v3'];
 
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 

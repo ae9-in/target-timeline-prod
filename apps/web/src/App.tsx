@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DepartmentProvider } from './context/DepartmentContext';
+import { LocationProvider } from './context/LocationContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Login } from './pages/Login';
@@ -15,6 +16,7 @@ import { DepartmentManagement } from './pages/DepartmentManagement';
 import { Analytics } from './pages/Analytics';
 import { Alerts } from './pages/Alerts';
 import { WeeklyReports } from './pages/WeeklyReports';
+import { LocationManagement } from './pages/LocationManagement';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -53,6 +55,7 @@ const AppContent: React.FC = () => {
 
   const roles = user.roles || [];
   const hasLeadershipScope = roles.includes('SUPER_ADMIN') || roles.includes('LEADERSHIP');
+  const isSuperAdmin = roles.includes('SUPER_ADMIN');
 
   return (
     <div className="app-container">
@@ -79,6 +82,12 @@ const AppContent: React.FC = () => {
             path="/reports" 
             element={hasLeadershipScope ? <WeeklyReports /> : <Navigate to="/" replace />} 
           />
+
+          {/* Admin-only: Location Management */}
+          <Route
+            path="/admin/locations"
+            element={isSuperAdmin ? <LocationManagement /> : <Navigate to="/" replace />}
+          />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -90,11 +99,13 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <AuthProvider>
-      <DepartmentProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </DepartmentProvider>
+      <LocationProvider>
+        <DepartmentProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </DepartmentProvider>
+      </LocationProvider>
     </AuthProvider>
   );
 }
