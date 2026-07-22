@@ -9,9 +9,11 @@ import * as express from 'express';
 const server = express();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
-    logger: ['error', 'warn'],
-  });
+  const isVercel = !!process.env.VERCEL;
+
+  const app = isVercel
+    ? await NestFactory.create(AppModule, new ExpressAdapter(server), { logger: ['error', 'warn'] })
+    : await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
 
   // Security headers
   app.use(helmet());
@@ -35,20 +37,15 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
 
-  await app.init();
+  if (isVercel) {
+    await app.init();
+  } else {
+    const port = process.env.PORT ?? 3000;
+    await app.listen(port);
+    console.log(`Backend API is running locally on: http://localhost:${port}`);
+  }
 }
 
-// For local running
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  bootstrap().then(() => {
-    const port = process.env.PORT ?? 3000;
-    server.listen(port, () => {
-      console.log(`Backend API is running locally on: http://localhost:${port}`);
-    });
-  });
-} else {
-  // Initialize NestJS app for serverless function execution environment
-  bootstrap();
-}
+bootstrap();
 
 export default server;
