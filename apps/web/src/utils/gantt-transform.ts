@@ -17,6 +17,11 @@ export interface GanttTarget {
     baselineEnd: string;
     label: string;
   } | null;
+  baseline?: number;
+  targetValue?: number;
+  currentValue?: number;
+  unit?: string;
+  direction?: string;
 }
 
 export interface TransformOptions {

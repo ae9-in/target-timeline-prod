@@ -1,11 +1,12 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toPng } from 'html-to-image';
 import {
   Layers, GitBranch,
   BookMarked, Download, FileText, Search,
   RotateCcw, SlidersHorizontal, Calendar,
   ChevronDown, ChevronRight, User as UserIcon,
-  Info, Maximize, Minimize
+  Info, Maximize, Minimize, Plus, Trash2, Copy, Edit2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGanttData } from '../hooks/useGanttData';
@@ -20,13 +21,14 @@ type FilterRAG = 'ALL' | 'GREEN' | 'AMBER' | 'RED';
 type ViewMode = 'Day' | 'Week' | 'Month' | 'Quarter' | 'Year';
 
 interface GanttRow {
-  type: 'group' | 'task';
+  type: 'group' | 'task' | 'ghost';
   id: string;
   label: string;
   target?: GanttTarget;
   progress?: number;
   startDate?: string;
   deadline?: string;
+  groupId?: string; // Links ghost rows to their parent group vertical/owner value
 }
 
 // ─── Cell Editor Component ────────────────────────────────────────────────────
@@ -131,6 +133,7 @@ const GridCell: React.FC<GridCellProps> = ({ target, colId, value, hasAccess, on
 // ─── Main Timeline Component ──────────────────────────────────────────────────
 export const Timeline: React.FC = () => {
   const { api, user } = useAuth();
+  const navigate = useNavigate();
 
   // Settings / filters
   const [viewMode, setViewMode] = useState<ViewMode>('Week');
@@ -141,6 +144,47 @@ export const Timeline: React.FC = () => {
   const [filterMilestone, setFilterMilestone] = useState(false);
   const [filterCriticalOnly, setFilterCriticalOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    targetId?: string;
+    groupId?: string;
+    clickedDate?: Date;
+  } | null>(null);
+
+  // Quick Create Popover State
+  const [quickCreate, setQuickCreate] = useState<{
+    startDate: Date;
+    deadline: Date;
+    groupId?: string;
+    x: number;
+    y: number;
+    isMilestone?: boolean;
+  } | null>(null);
+
+  // Quick Create Fields
+  const [qcName, setQcName] = useState('');
+  const [qcOwner, setQcOwner] = useState(user?.name || '');
+  const [qcVertical, setQcVertical] = useState('Sales');
+
+  // Drag-to-create state
+  const [dragCreate, setDragCreate] = useState<{
+    startX: number;
+    currentX: number;
+    rowIndex: number;
+    groupId?: string;
+  } | null>(null);
+
+  // Add dependency creation state
+  const [dependencySourceId, setDependencySourceId] = useState<string | null>(null);
+
+  // Copy paste target clip state
+  const [copiedTarget, setCopiedTarget] = useState<GanttTarget | null>(null);
+
+  // Canvas Hover guide line X
+  const [hoverGuideX, setHoverGuideX] = useState<number | null>(null);
 
   // Column Widths (state + localStorage cache)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
@@ -199,7 +243,6 @@ export const Timeline: React.FC = () => {
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
-      // Wait to measure container height changes
       setTimeout(updateGhostRows, 150);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -208,6 +251,15 @@ export const Timeline: React.FC = () => {
 
   // Collapse status of groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const handleGroupToggle = (groupId: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
 
   // Drag-to-resize grid column headers
   const resizingColRef = useRef<string | null>(null);
@@ -310,6 +362,12 @@ export const Timeline: React.FC = () => {
     const diff = d.getTime() - timelineDates.start.getTime();
     const days = diff / (1000 * 60 * 60 * 24);
     return days * pixelsPerDay;
+  }, [timelineDates, pixelsPerDay]);
+
+  const xToDate = useCallback((x: number) => {
+    const days = x / pixelsPerDay;
+    const ms = days * 24 * 60 * 60 * 1000;
+    return new Date(timelineDates.start.getTime() + ms);
   }, [timelineDates, pixelsPerDay]);
 
   // Today marker
@@ -450,15 +508,34 @@ export const Timeline: React.FC = () => {
     return list;
   }, [localTargets, filterRAG, filterMilestone, filterCriticalOnly, searchQuery, criticalIds]);
 
-  // Grouped rows construction
+  // Check user permissions for target vertical creation
+  const hasEditAccess = useCallback((targetVertical: string) => {
+    if (!user) return false;
+    const isAllowedRole = user.roles.some((r: any) =>
+      ['SUPER_ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'].includes(r)
+    );
+    const isScoped = user.verticalScope && user.verticalScope.length > 0;
+    return isAllowedRole && (!isScoped || user.verticalScope.includes(targetVertical));
+  }, [user]);
+
+  // Grouped rows construction (injects swimlane empty interactive rows)
   const rows = useMemo<GanttRow[]>(() => {
     if (groupBy === 'none') {
-      return filteredTargets.map(t => ({
+      const base: GanttRow[] = filteredTargets.map(t => ({
         type: 'task' as const,
         id: t.id,
         label: t.name,
         target: t
       }));
+
+      if (base.length > 0) {
+        base.push({
+          type: 'ghost',
+          id: 'ghost__bottom_affordance',
+          label: '+ Add Target...'
+        });
+      }
+      return base;
     }
 
     const key = groupBy === 'vertical' ? 'vertical' : 'owner';
@@ -500,13 +577,26 @@ export const Timeline: React.FC = () => {
             target: t
           });
         }
+
+        finalRows.push({
+          type: 'ghost',
+          id: `ghost__${gLabel}_1`,
+          label: '+ Add target...',
+          groupId: gLabel
+        });
+        finalRows.push({
+          type: 'ghost',
+          id: `ghost__${gLabel}_2`,
+          label: '+ Add target...',
+          groupId: gLabel
+        });
       }
     }
 
     return finalRows;
   }, [filteredTargets, groupBy, collapsedGroups]);
 
-  // ── Ghost Rows to Fill Available Space ─────────────────────────────────────
+  // ── Ghost Rows to Fill Remaining Viewport Height ───────────────────────────
   const [ghostRows, setGhostRows] = useState<number[]>([]);
   const bodyRowRef = useRef<HTMLDivElement>(null);
 
@@ -528,6 +618,113 @@ export const Timeline: React.FC = () => {
     return () => observer.disconnect();
   }, [updateGhostRows]);
 
+  // Keyboard shortcut 'N' opens Quick-Create
+  useEffect(() => {
+    const handleKeyDownGlobal = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement?.tagName.toLowerCase();
+      if (activeEl === 'input' || activeEl === 'textarea' || activeEl === 'select') return;
+
+      if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        const start = new Date();
+        const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+        setQuickCreate({
+          startDate: start,
+          deadline: end,
+          x: window.innerWidth / 2 - 140,
+          y: window.innerHeight / 2 - 150
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDownGlobal);
+    return () => window.removeEventListener('keydown', handleKeyDownGlobal);
+  }, []);
+
+  const snapDate = useCallback((d: Date) => {
+    const result = new Date(d);
+    if (viewMode === 'Day') {
+      result.setHours(0, 0, 0, 0);
+    } else if (viewMode === 'Week') {
+      const day = result.getDay();
+      result.setDate(result.getDate() - day);
+      result.setHours(0, 0, 0, 0);
+    } else {
+      result.setDate(1);
+      result.setHours(0, 0, 0, 0);
+    }
+    return result;
+  }, [viewMode]);
+
+  // ── Drag-to-Create Logic ────────────────────────────────────────────────────
+  const handleCanvasDragStart = (e: React.MouseEvent, rowIndex: number, rowGroupId?: string) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.gantt-task-bar-wrapper') || target.closest('.gantt-milestone-marker')) {
+      return;
+    }
+
+    if (rowGroupId && !hasEditAccess(rowGroupId)) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    setQuickCreate(null);
+
+    const startX = e.clientX;
+    setDragCreate({
+      startX,
+      currentX: startX,
+      rowIndex,
+      groupId: rowGroupId
+    });
+
+    const handleMouseMoveGlobal = (moveEvent: MouseEvent) => {
+      setDragCreate(prev => prev ? { ...prev, currentX: moveEvent.clientX } : null);
+    };
+
+    const handleMouseUpGlobal = (upEvent: MouseEvent) => {
+      document.removeEventListener('mousemove', handleMouseMoveGlobal);
+      document.removeEventListener('mouseup', handleMouseUpGlobal);
+
+      const canvas = bodyHorizontalScrollRef.current;
+      if (!canvas) {
+        setDragCreate(null);
+        return;
+      }
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const scrollX = canvas.scrollLeft;
+
+      const px1 = Math.min(startX, upEvent.clientX) - canvasRect.left + scrollX;
+      const px2 = Math.max(startX, upEvent.clientX) - canvasRect.left + scrollX;
+
+      const date1 = snapDate(xToDate(px1));
+      const date2 = snapDate(xToDate(px2));
+
+      if (date2.getTime() - date1.getTime() < 24 * 60 * 60 * 1000) {
+        date2.setDate(date2.getDate() + 1);
+      }
+
+      setQcName('');
+      setQcOwner(user?.name || '');
+      setQcVertical(rowGroupId || 'Sales');
+
+      setQuickCreate({
+        startDate: date1,
+        deadline: date2,
+        groupId: rowGroupId,
+        x: Math.min(window.innerWidth - 300, Math.max(20, upEvent.clientX - 140)),
+        y: Math.min(window.innerHeight - 380, Math.max(20, upEvent.clientY - 120))
+      });
+
+      setDragCreate(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMoveGlobal);
+    document.addEventListener('mouseup', handleMouseUpGlobal);
+  };
+
   // ── Drag & Drop Reschedule (Task bars & edges) ──────────────────────────────
   const handleBarMouseDown = useCallback((
     e: React.MouseEvent,
@@ -536,6 +733,13 @@ export const Timeline: React.FC = () => {
   ) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (dependencySourceId) {
+      if (dependencySourceId !== targetId) {
+        handleConfirmDependency(targetId);
+      }
+      return;
+    }
 
     const startX = e.clientX;
     const target = localTargets.find(t => t.id === targetId);
@@ -609,7 +813,7 @@ export const Timeline: React.FC = () => {
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [localTargets, pixelsPerDay, api, refresh]);
+  }, [localTargets, pixelsPerDay, api, refresh, dependencySourceId]);
 
   // Drag Progress Handle inside Task Bar
   const handleProgressMouseDown = useCallback((
@@ -662,10 +866,10 @@ export const Timeline: React.FC = () => {
     document.addEventListener('mouseup', handleMouseUp);
   }, [localTargets, api, refresh]);
 
-  // Click & Drag Canvas panning
+  // Click & Drag Canvas panning on background (not ghost rows or tasks)
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (!target.classList.contains('gantt-chart-row') && !target.classList.contains('gantt-chart-body-canvas')) {
+    if (!target.classList.contains('gantt-chart-body-canvas')) {
       return;
     }
 
@@ -719,6 +923,206 @@ export const Timeline: React.FC = () => {
     }
   }, [api, refresh]);
 
+  // ── Context Menu Actions ────────────────────────────────────────────────────
+  const handleContextMenu = (e: React.MouseEvent, targetId?: string, rowGroupId?: string) => {
+    e.preventDefault();
+
+    const canvas = bodyHorizontalScrollRef.current;
+    let clickedDate: Date | undefined;
+
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const relativeX = e.clientX - rect.left + canvas.scrollLeft;
+      clickedDate = snapDate(xToDate(relativeX));
+    }
+
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      targetId,
+      groupId: rowGroupId,
+      clickedDate
+    });
+  };
+
+  const handleCreateFromContext = (isMilestone = false) => {
+    if (!contextMenu) return;
+
+    const start = contextMenu.clickedDate || new Date();
+    const end = isMilestone ? start : new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    setQcName('');
+    setQcOwner(user?.name || '');
+    setQcVertical(contextMenu.groupId || 'Sales');
+
+    setQuickCreate({
+      startDate: start,
+      deadline: end,
+      groupId: contextMenu.groupId,
+      x: Math.min(window.innerWidth - 300, contextMenu.x),
+      y: Math.min(window.innerHeight - 380, contextMenu.y),
+      isMilestone
+    });
+    setContextMenu(null);
+  };
+
+  const handleDuplicateTarget = async (targetId: string) => {
+    const original = localTargets.find(t => t.id === targetId);
+    if (!original) return;
+
+    try {
+      await api.post('/targets', {
+        name: `${original.name} (Copy)`,
+        vertical: original.vertical,
+        owner: original.owner,
+        startDate: original.startDate,
+        deadline: original.deadline,
+        baseline: original.baseline || 0,
+        targetValue: original.targetValue || 100,
+        currentValue: original.currentValue || 0,
+        unit: original.unit || '%',
+        direction: original.direction || 'UP'
+      });
+      refresh();
+    } catch (err) {
+      console.error('Duplication failed:', err);
+    }
+    setContextMenu(null);
+  };
+
+  const handleDeleteTarget = async (targetId: string) => {
+    if (!window.confirm('Are you sure you want to delete this target?')) return;
+    try {
+      await api.delete(`/targets/${targetId}`);
+      refresh();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+    setContextMenu(null);
+  };
+
+  const handleToggleMilestone = async (targetId: string) => {
+    const task = localTargets.find(t => t.id === targetId);
+    if (!task) return;
+    try {
+      await api.patch(`/targets/${targetId}/schedule`, {
+        isMilestone: !task.isMilestone
+      });
+      refresh();
+    } catch (err) {
+      console.error('Milestone toggle failed:', err);
+    }
+    setContextMenu(null);
+  };
+
+  const handleCopyTarget = (targetId: string) => {
+    const task = localTargets.find(t => t.id === targetId);
+    if (task) {
+      setCopiedTarget(task);
+    }
+    setContextMenu(null);
+  };
+
+  const handlePasteTarget = async () => {
+    if (!copiedTarget || !contextMenu) return;
+    const start = contextMenu.clickedDate || new Date();
+    const duration = new Date(copiedTarget.deadline).getTime() - new Date(copiedTarget.startDate).getTime();
+    const end = new Date(start.getTime() + duration);
+
+    try {
+      await api.post('/targets', {
+        name: copiedTarget.name,
+        vertical: contextMenu.groupId || copiedTarget.vertical,
+        owner: copiedTarget.owner,
+        startDate: start.toISOString(),
+        deadline: end.toISOString(),
+        baseline: copiedTarget.baseline || 0,
+        targetValue: copiedTarget.targetValue || 100,
+        currentValue: copiedTarget.currentValue || 0,
+        unit: copiedTarget.unit || '%',
+        direction: copiedTarget.direction || 'UP'
+      });
+      refresh();
+    } catch (err) {
+      console.error('Paste failed:', err);
+    }
+    setContextMenu(null);
+  };
+
+  const handleConfirmDependency = async (targetId: string) => {
+    if (!dependencySourceId) return;
+    try {
+      await api.post(`/targets/${targetId}/dependencies`, {
+        predecessorId: dependencySourceId,
+        type: 'FS',
+        lagDays: 0
+      });
+      refresh();
+    } catch (err) {
+      console.error('Adding dependency failed:', err);
+    } finally {
+      setDependencySourceId(null);
+    }
+  };
+
+  // ── Quick-Create Popover Submission ──────────────────────────────────────────
+  const handleQuickCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickCreate) return;
+
+    try {
+      await api.post('/targets', {
+        name: qcName || (quickCreate.isMilestone ? 'New Milestone' : 'New Task'),
+        vertical: qcVertical,
+        owner: qcOwner,
+        startDate: quickCreate.startDate.toISOString(),
+        deadline: quickCreate.deadline.toISOString(),
+        isMilestone: !!quickCreate.isMilestone,
+        baseline: 0,
+        targetValue: 100,
+        currentValue: 0,
+        unit: '%',
+        direction: 'UP'
+      });
+      setQuickCreate(null);
+      refresh();
+    } catch (err) {
+      console.error('Quick target creation failed:', err);
+    }
+  };
+
+  // Empty Grid Row Click Handler (Triggers Popover)
+  const handleEmptyRowClick = (e: React.MouseEvent, rowGroupId?: string) => {
+    const canvas = bodyHorizontalScrollRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const relativeX = e.clientX - rect.left + canvas.scrollLeft;
+    const start = snapDate(xToDate(relativeX));
+    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    setQcName('');
+    setQcOwner(user?.name || '');
+    setQcVertical(rowGroupId || 'Sales');
+
+    setQuickCreate({
+      startDate: start,
+      deadline: end,
+      groupId: rowGroupId,
+      x: Math.min(window.innerWidth - 300, Math.max(20, e.clientX - 140)),
+      y: Math.min(window.innerHeight - 380, Math.max(20, e.clientY - 120))
+    });
+  };
+
+  // Close context menu and Quick Create on click away
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setContextMenu(null);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
   // ── SVG Dependencies Construction ───────────────────────────────────────────
   const dependencyLines = useMemo(() => {
     const lines: React.ReactNode[] = [];
@@ -767,7 +1171,6 @@ export const Timeline: React.FC = () => {
     return lines;
   }, [rows, dateToX]);
 
-  // ── Hover Tooltip details ───────────────────────────────────────────────────
   const [hoveredTask, setHoveredTask] = useState<{
     task: GanttTarget;
     x: number;
@@ -783,6 +1186,17 @@ export const Timeline: React.FC = () => {
   };
 
   const handleMouseMoveTooltip = (e: React.MouseEvent) => {
+    const canvas = bodyHorizontalScrollRef.current;
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const relativeX = e.clientX - rect.left;
+      if (relativeX >= 0 && relativeX <= rect.width) {
+        setHoverGuideX(relativeX + canvas.scrollLeft);
+      } else {
+        setHoverGuideX(null);
+      }
+    }
+
     if (hoveredTask) {
       setHoveredTask(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
     }
@@ -790,9 +1204,9 @@ export const Timeline: React.FC = () => {
 
   const handleMouseLeave = () => {
     setHoveredTask(null);
+    setHoverGuideX(null);
   };
 
-  // ── Export Features ─────────────────────────────────────────────────────────
   const handleExportPNG = async () => {
     if (!ganttPageRef.current) return;
     try {
@@ -815,25 +1229,6 @@ export const Timeline: React.FC = () => {
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  // Check user permissions for cell edits
-  const hasEditAccess = (targetVertical: string) => {
-    if (!user) return false;
-    const isAllowedRole = user.roles.some((r: any) =>
-      ['SUPER_ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'].includes(r)
-    );
-    const isScoped = user.verticalScope && user.verticalScope.length > 0;
-    return isAllowedRole && (!isScoped || user.verticalScope.includes(targetVertical));
-  };
-
-  const handleGroupToggle = (groupId: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
   };
 
   if (loading) {
@@ -862,6 +1257,21 @@ export const Timeline: React.FC = () => {
       ref={ganttPageRef}
       onMouseMove={handleMouseMoveTooltip}
     >
+      {/* Dependency Selection Banner */}
+      {dependencySourceId && (
+        <div className="gantt-dependency-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <GitBranch size={16} />
+            <span>
+              <strong>Dependency Mode Active:</strong> Select target to add Finish-to-Start dependency to. Click another task row or bar to confirm.
+            </span>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={() => setDependencySourceId(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="gantt-toolbar">
         {/* Search */}
@@ -980,7 +1390,7 @@ export const Timeline: React.FC = () => {
       </div>
 
       {/* Main Gantt Grid Container */}
-      <div className="gantt-container">
+      <div className="gantt-container" onContextMenu={(e) => handleContextMenu(e)}>
         {/* Header Row */}
         <div className="gantt-header-row">
           {/* Left headers */}
@@ -1034,7 +1444,26 @@ export const Timeline: React.FC = () => {
               {rows.map((row) => {
                 const isSelected = row.type === 'task' && row.id === hoveredTask?.task.id;
                 const isGroup = row.type === 'group';
+                const isGhost = row.type === 'ghost';
                 const access = row.target ? hasEditAccess(row.target.vertical) : false;
+
+                if (isGhost) {
+                  return (
+                    <div
+                      key={row.id}
+                      className="gantt-grid-row ghost-row"
+                      style={{ height: ROW_HEIGHT }}
+                      onClick={(e) => hasEditAccess(row.groupId || 'Sales') && handleEmptyRowClick(e, row.groupId)}
+                      onContextMenu={(e) => handleContextMenu(e, undefined, row.groupId)}
+                    >
+                      <div className="gantt-grid-cell" style={{ width: totalGridWidth, borderRight: 'none' }}>
+                        <span className="gantt-add-affordance-text">
+                          <Plus size={12} /> {row.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div
@@ -1042,6 +1471,7 @@ export const Timeline: React.FC = () => {
                     className={`gantt-grid-row ${isSelected ? 'selected' : ''} ${isGroup ? 'group-row' : ''}`}
                     style={{ height: ROW_HEIGHT }}
                     onClick={() => isGroup && handleGroupToggle(row.id)}
+                    onContextMenu={(e) => handleContextMenu(e, row.id, isGroup ? undefined : row.target?.vertical)}
                   >
                     {/* Task Name Column */}
                     {showCondensedGrid || visibleColumns.some(c => c.id === 'name') ? (
@@ -1082,7 +1512,7 @@ export const Timeline: React.FC = () => {
                       </div>
                     ) : null}
 
-                    {/* Owner Column (hidden in condensed) */}
+                    {/* Owner Column */}
                     {!showCondensedGrid && visibleColumns.some(c => c.id === 'owner') ? (
                       <div className="gantt-grid-cell" style={{ width: columnWidths.owner }}>
                         {row.target ? (
@@ -1136,7 +1566,7 @@ export const Timeline: React.FC = () => {
                       </div>
                     ) : null}
 
-                    {/* Progress Column (hidden in condensed) */}
+                    {/* Progress Column */}
                     {!showCondensedGrid && visibleColumns.some(c => c.id === 'progress') ? (
                       <div className="gantt-grid-cell" style={{ width: columnWidths.progress }}>
                         {row.target ? (
@@ -1174,19 +1604,27 @@ export const Timeline: React.FC = () => {
                 );
               })}
 
-              {/* Ghost rows at the bottom of the grid to visual continue to the edge */}
+              {/* Ghost rows at the bottom of the grid to visually continue to the edge */}
               {ghostRows.map((index) => (
                 <div
                   key={`ghost-grid-${index}`}
                   className="gantt-grid-row ghost-row"
                   style={{ height: ROW_HEIGHT }}
+                  onClick={(e) => hasEditAccess('Sales') && handleEmptyRowClick(e)}
+                  onContextMenu={(e) => handleContextMenu(e, undefined)}
                 >
                   {visibleColumns.map(col => (
                     <div
                       key={col.id}
                       className="gantt-grid-cell"
                       style={{ width: columnWidths[col.id] }}
-                    />
+                    >
+                      {col.id === 'name' && (
+                        <span className="gantt-add-affordance-text">
+                          <Plus size={12} /> + Add target...
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
               ))}
@@ -1198,6 +1636,7 @@ export const Timeline: React.FC = () => {
               ref={bodyHorizontalScrollRef}
               onScroll={handleHorizontalScroll}
               onMouseDown={handleCanvasMouseDown}
+              onMouseLeave={handleMouseLeave}
             >
               <div
                 className="gantt-chart-body-canvas"
@@ -1252,9 +1691,50 @@ export const Timeline: React.FC = () => {
                   </div>
                 )}
 
+                {/* Hover vertical guide line */}
+                {hoverGuideX !== null && (
+                  <div
+                    className="gantt-hover-guide"
+                    style={{
+                      position: 'absolute',
+                      left: hoverGuideX,
+                      top: 0,
+                      bottom: 0,
+                      width: '1px',
+                      borderLeft: '1px dashed rgba(255, 255, 255, 0.15)',
+                      pointerEvents: 'none',
+                      zIndex: 6
+                    }}
+                  />
+                )}
+
                 {/* 3. Task Rows on Canvas */}
-                {rows.map((row) => {
+                {rows.map((row, idx) => {
                   const isGroup = row.type === 'group';
+                  const isGhost = row.type === 'ghost';
+
+                  if (isGhost) {
+                    return (
+                      <div
+                        key={row.id}
+                        className="gantt-chart-row ghost-row"
+                        style={{ height: ROW_HEIGHT, width: totalTimelineWidth }}
+                        onMouseDown={(e) => handleCanvasDragStart(e, idx, row.groupId)}
+                        onContextMenu={(e) => handleContextMenu(e, undefined, row.groupId)}
+                      >
+                        {/* Drag preview bar if active */}
+                        {dragCreate && dragCreate.rowIndex === idx && (
+                          <div
+                            className="gantt-task-bar-preview"
+                            style={{
+                              left: Math.min(dragCreate.startX, dragCreate.currentX) - (bodyHorizontalScrollRef.current?.getBoundingClientRect().left || 0) + (bodyHorizontalScrollRef.current?.scrollLeft || 0),
+                              width: Math.abs(dragCreate.startX - dragCreate.currentX)
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
 
                   if (isGroup) {
                     const xStart = dateToX(new Date(row.startDate!));
@@ -1310,6 +1790,7 @@ export const Timeline: React.FC = () => {
                         height: ROW_HEIGHT,
                         width: totalTimelineWidth
                       }}
+                      onContextMenu={(e) => handleContextMenu(e, t.id, t.vertical)}
                     >
                       {t.isMilestone ? (
                         <div
@@ -1390,16 +1871,32 @@ export const Timeline: React.FC = () => {
                 })}
 
                 {/* Ghost rows on the canvas body */}
-                {ghostRows.map((index) => (
-                  <div
-                    key={`ghost-chart-${index}`}
-                    className="gantt-chart-row ghost-row"
-                    style={{
-                      height: ROW_HEIGHT,
-                      width: totalTimelineWidth
-                    }}
-                  />
-                ))}
+                {ghostRows.map((index) => {
+                  const actualRowIdx = rows.length + index;
+                  return (
+                    <div
+                      key={`ghost-chart-${index}`}
+                      className="gantt-chart-row ghost-row"
+                      style={{
+                        height: ROW_HEIGHT,
+                        width: totalTimelineWidth
+                      }}
+                      onMouseDown={(e) => handleCanvasDragStart(e, actualRowIdx)}
+                      onContextMenu={(e) => handleContextMenu(e, undefined)}
+                    >
+                      {/* Drag preview bar if active */}
+                      {dragCreate && dragCreate.rowIndex === actualRowIdx && (
+                        <div
+                          className="gantt-task-bar-preview"
+                          style={{
+                            left: Math.min(dragCreate.startX, dragCreate.currentX) - (bodyHorizontalScrollRef.current?.getBoundingClientRect().left || 0) + (bodyHorizontalScrollRef.current?.scrollLeft || 0),
+                            width: Math.abs(dragCreate.startX - dragCreate.currentX)
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* 4. Dependency Connector Lines SVG Layer */}
                 <svg className="gantt-svg-overlay">
@@ -1423,6 +1920,155 @@ export const Timeline: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Inline Quick-Create Popover */}
+      {quickCreate && (
+        <div
+          className="gantt-quick-create"
+          style={{
+            left: quickCreate.x,
+            top: quickCreate.y
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="gantt-quick-create-title">
+            {quickCreate.isMilestone ? 'Quick Add Milestone' : 'Quick Add Target'}
+          </div>
+          <form onSubmit={handleQuickCreateSubmit}>
+            <div className="gantt-quick-create-row">
+              <label>Name</label>
+              <input
+                type="text"
+                required
+                value={qcName}
+                onChange={(e) => setQcName(e.target.value)}
+                placeholder="e.g. Launch Beta"
+                autoFocus
+              />
+            </div>
+            <div className="gantt-quick-create-row">
+              <label>Owner</label>
+              <input
+                type="text"
+                required
+                value={qcOwner}
+                onChange={(e) => setQcOwner(e.target.value)}
+                placeholder="e.g. John Doe"
+              />
+            </div>
+            <div className="gantt-quick-create-row">
+              <label>Vertical</label>
+              <select
+                value={qcVertical}
+                onChange={(e) => setQcVertical(e.target.value)}
+                disabled={!!quickCreate.groupId}
+              >
+                <option value="Sales">Sales</option>
+                <option value="Production">Production</option>
+                <option value="Hiring">Hiring</option>
+              </select>
+            </div>
+            <div className="gantt-quick-create-row">
+              <label>Dates</label>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                {quickCreate.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {!quickCreate.isMilestone && ` - ${quickCreate.deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+              </span>
+            </div>
+
+            <div className="gantt-quick-create-actions">
+              <button
+                type="button"
+                className="gantt-quick-create-btn cancel"
+                onClick={() => setQuickCreate(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="gantt-quick-create-btn save"
+              >
+                Create
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Right-Click Context Menu */}
+      {contextMenu && (
+        <div
+          className="gantt-context-menu"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.targetId ? (
+            // Context Menu for populated target row
+            <>
+              <div
+                className="gantt-context-menu-item"
+                onClick={() => {
+                  navigate(`/targets/${contextMenu.targetId}`);
+                  setContextMenu(null);
+                }}
+              >
+                <Edit2 size={12} /> Edit Details
+              </div>
+              <div
+                className="gantt-context-menu-item"
+                onClick={() => {
+                  setDependencySourceId(contextMenu.targetId!);
+                  setContextMenu(null);
+                }}
+              >
+                <GitBranch size={12} /> Add Dependency From Here
+              </div>
+              <div
+                className="gantt-context-menu-item"
+                onClick={() => handleToggleMilestone(contextMenu.targetId!)}
+              >
+                ◆ Toggle Milestone
+              </div>
+              <div
+                className="gantt-context-menu-item"
+                onClick={() => handleCopyTarget(contextMenu.targetId!)}
+              >
+                <Copy size={12} /> Copy Target
+              </div>
+              <div
+                className="gantt-context-menu-item"
+                onClick={() => handleDuplicateTarget(contextMenu.targetId!)}
+              >
+                <Layers size={12} /> Duplicate Target
+              </div>
+              <div
+                className="gantt-context-menu-item danger"
+                onClick={() => handleDeleteTarget(contextMenu.targetId!)}
+              >
+                <Trash2 size={12} /> Delete Target
+              </div>
+            </>
+          ) : (
+            // Context Menu for empty space
+            <>
+              <div className="gantt-context-menu-item" onClick={() => handleCreateFromContext(false)}>
+                <Plus size={12} /> Add Target Here
+              </div>
+              <div className="gantt-context-menu-item" onClick={() => handleCreateFromContext(true)}>
+                ◆ Add Milestone Here
+              </div>
+              {copiedTarget && (
+                <div className="gantt-context-menu-item" onClick={handlePasteTarget}>
+                  <Copy size={12} style={{ transform: 'rotate(180deg)' }} /> Paste Copied Target
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Tooltip Overlay */}
       {hoveredTask && (
@@ -1492,7 +2138,7 @@ export const Timeline: React.FC = () => {
         )}
         <div className="gantt-legend-item" style={{ marginLeft: 'auto', opacity: 0.6 }}>
           <Info size={12} style={{ display: 'inline-block', marginRight: '4px' }} />
-          Double click cells to edit in-place
+          Double click cells to edit | Right click canvas for context menu | Press N to add target
         </div>
       </div>
     </div>
