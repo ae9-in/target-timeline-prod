@@ -40,16 +40,16 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Guard: if not logged in, only allow accessing /admin/login
+  // Guard: if not logged in, only allow accessing /login
   if (!user) {
-    if (location.pathname === '/admin/login') {
+    if (location.pathname === '/login') {
       return <Login />;
     }
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // If already logged in, redirect away from the login page to dashboard
-  if (location.pathname === '/admin/login') {
+  if (location.pathname === '/login') {
     return <Navigate to="/" replace />;
   }
 
