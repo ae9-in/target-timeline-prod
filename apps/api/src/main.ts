@@ -3,9 +3,13 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import * as express from 'express';
+
+const server = express();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
     logger: ['error', 'warn'],
   });
 
@@ -31,8 +35,20 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   });
 
-  const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`Backend API is running on: http://localhost:${port}`);
+  await app.init();
 }
-bootstrap();
+
+// For local running
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  bootstrap().then(() => {
+    const port = process.env.PORT ?? 3000;
+    server.listen(port, () => {
+      console.log(`Backend API is running locally on: http://localhost:${port}`);
+    });
+  });
+} else {
+  // Initialize NestJS app for serverless function execution environment
+  bootstrap();
+}
+
+export default server;
