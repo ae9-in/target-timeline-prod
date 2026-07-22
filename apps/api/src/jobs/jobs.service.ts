@@ -16,9 +16,14 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.reportsDir = path.join(process.cwd(), 'reports');
-    if (!fs.existsSync(this.reportsDir)) {
-      fs.mkdirSync(this.reportsDir, { recursive: true });
+    const isVercel = !!process.env.VERCEL;
+    this.reportsDir = isVercel ? '/tmp/reports' : path.join(process.cwd(), 'reports');
+    try {
+      if (!fs.existsSync(this.reportsDir)) {
+        fs.mkdirSync(this.reportsDir, { recursive: true });
+      }
+    } catch (err) {
+      this.logger.error(`Could not create reports directory: ${this.reportsDir}`, err);
     }
   }
 
