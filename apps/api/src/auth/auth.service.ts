@@ -4,8 +4,6 @@ import { PrismaService } from '../prisma.service';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { generateSecret, verifySync, generateURI } from 'otplib';
-import * as qrcode from 'qrcode';
 import { encrypt, decrypt } from '../utils/crypto';
 import { getJwtKeys } from './keys';
 
@@ -213,43 +211,7 @@ export class AuthService {
 
   // Complete MFA Setup
   async completeMfaSetup(token: string, code: string, ip: string): Promise<any> {
-    const data = await this.redis.get(`mfa_setup:${token}`);
-    if (!data) {
-      throw new BadRequestException('MFA setup session expired or invalid');
-    }
-
-    const { userId, secret } = JSON.parse(data);
-    const decryptedSecret = decrypt(secret, this.mfaEncryptionKey);
-
-    const isMfaValid = verifySync({
-      token: code,
-      secret: decryptedSecret,
-    });
-
-    if (!isMfaValid) {
-      throw new UnauthorizedException('Invalid MFA code');
-    }
-
-    // Save encrypted MFA secret to user
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: { mfaSecret: secret },
-      include: { roles: true },
-    });
-
-    await this.redis.del(`mfa_setup:${token}`);
-
-    await this.prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: 'MFA_ENABLE',
-        resourceType: 'user',
-        resourceId: user.id,
-        ip,
-      },
-    });
-
-    return user;
+    throw new BadRequestException('MFA is disabled');
   }
 
   // Refresh Token Rotation & Reuse Detection
