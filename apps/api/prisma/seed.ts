@@ -99,7 +99,11 @@ async function main() {
     { roleId: roles.VIEWER.id, resource: 'department_performance', action: 'read', scope: null },
     { roleId: roles.VIEWER.id, resource: 'analytics', action: 'read', scope: null },
     { roleId: roles.VIEWER.id, resource: 'alert', action: 'read', scope: null },
+    { roleId: roles.VIEWER.id, resource: 'alert', action: 'update', scope: null },
     { roleId: roles.VIEWER.id, resource: 'target', action: 'read', scope: null },
+    { roleId: roles.VIEWER.id, resource: 'target', action: 'create', scope: null },
+    { roleId: roles.VIEWER.id, resource: 'target', action: 'update', scope: null },
+    { roleId: roles.VIEWER.id, resource: 'target', action: 'delete', scope: null },
   ];
 
   await prisma.permission.deleteMany({});

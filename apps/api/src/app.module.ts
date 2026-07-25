@@ -12,6 +12,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { UsersModule } from './users/users.module';
 import { AuditModule } from './audit/audit.module';
 import { LocationsModule } from './locations/locations.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { LocationsModule } from './locations/locations.module';
     UsersModule,
     AuditModule,
     LocationsModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

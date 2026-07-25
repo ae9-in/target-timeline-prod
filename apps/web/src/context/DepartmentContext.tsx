@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 export interface Department {
   id: string;
@@ -14,65 +15,59 @@ export interface Department {
 
 interface DepartmentContextType {
   departments: Department[];
-  addDepartment: (dept: Omit<Department, 'id'>) => Department;
-  updateDepartment: (id: string, updates: Partial<Omit<Department, 'id'>>) => void;
-  deleteDepartment: (id: string) => void;
+  loading: boolean;
+  addDepartment: (dept: Omit<Department, 'id'>) => Promise<Department>;
+  updateDepartment: (id: string, updates: Partial<Omit<Department, 'id'>>) => Promise<void>;
+  deleteDepartment: (id: string) => Promise<void>;
   getDepartmentByName: (name: string) => Department | undefined;
+  refreshDepartments: () => Promise<void>;
 }
-
-const DEFAULT_DEPARTMENTS: Department[] = [];
-
-// Bump version whenever a clean slate is needed (removes stale/dummy data from old keys)
-const STORAGE_KEY = 'targettrack_departments_v4';
-const STALE_KEYS = ['targettrack_departments', 'targettrack_departments_v1', 'targettrack_departments_v2', 'targettrack_departments_v3'];
 
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 
 export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [departments, setDepartments] = useState<Department[]>(() => {
-    // Clean up any stale keys from previous versions
-    STALE_KEYS.forEach((key) => {
-      try { localStorage.removeItem(key); } catch (_) { /* ignore */ }
-    });
+  const { user, api } = useAuth();
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(false);
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse stored departments:', e);
+  const refreshDepartments = async () => {
+    if (!user) {
+      setDepartments([]);
+      return;
     }
-    return DEFAULT_DEPARTMENTS;
-  });
+    setLoading(true);
+    try {
+      const res = await api.get('/departments');
+      setDepartments(res.data);
+    } catch (err) {
+      console.error('Failed to fetch departments from database:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Re-fetch when user logs in or API instance changes
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(departments));
-    } catch (e) {
-      console.error('Failed to persist departments to localStorage:', e);
-    }
-  }, [departments]);
+    refreshDepartments();
+  }, [user, api]);
 
-  const addDepartment = (deptData: Omit<Department, 'id'>): Department => {
-    const newDept: Department = {
-      ...deptData,
-      id: `dept-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-    };
+  const addDepartment = async (deptData: Omit<Department, 'id'>): Promise<Department> => {
+    const res = await api.post('/departments', deptData);
+    const newDept = res.data;
     setDepartments((prev) => [...prev, newDept]);
     return newDept;
   };
 
-  const updateDepartment = (id: string, updates: Partial<Omit<Department, 'id'>>) => {
+  const updateDepartment = async (id: string, updates: Partial<Omit<Department, 'id'>>) => {
+    const res = await api.patch(`/departments/${id}`, updates);
+    const updatedDept = res.data;
     setDepartments((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...updates } : d))
+      prev.map((d) => (d.id === id ? updatedDept : d))
     );
   };
 
-  const deleteDepartment = (id: string) => {
+  const deleteDepartment = async (id: string) => {
+    await api.delete(`/departments/${id}`);
     setDepartments((prev) => prev.filter((d) => d.id !== id));
   };
 
@@ -87,10 +82,12 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     <DepartmentContext.Provider
       value={{
         departments,
+        loading,
         addDepartment,
         updateDepartment,
         deleteDepartment,
         getDepartmentByName,
+        refreshDepartments,
       }}
     >
       {children}

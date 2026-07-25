@@ -20,7 +20,7 @@ const PRESET_COLORS = [
 ];
 
 export const DepartmentManagement: React.FC = () => {
-  const { departments, addDepartment, updateDepartment, deleteDepartment } = useDepartments();
+  const { departments, loading, addDepartment, updateDepartment, deleteDepartment } = useDepartments();
   const { locations } = useLocations();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,44 +59,62 @@ export const DepartmentManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [formError, setFormError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return;
+    setFormError('');
+    setActionLoading(true);
 
     const code = formCode.trim()
       ? formCode.trim().toUpperCase()
       : formName.trim().substring(0, 3).toUpperCase();
 
     const selectedLoc = locations.find(l => l.id === formLocationId);
-    if (editingDept) {
-      updateDepartment(editingDept.id, {
-        name: formName.trim(),
-        code,
-        color: formColor,
-        lead: formLead.trim() || 'Unassigned',
-        description: formDescription.trim(),
-        locationId: formLocationId || undefined,
-        locationName: selectedLoc?.name || undefined,
-      });
-    } else {
-      addDepartment({
-        name: formName.trim(),
-        code,
-        color: formColor,
-        lead: formLead.trim() || 'Unassigned',
-        description: formDescription.trim(),
-        locationId: formLocationId || undefined,
-        locationName: selectedLoc?.name || undefined,
-      });
+    try {
+      if (editingDept) {
+        await updateDepartment(editingDept.id, {
+          name: formName.trim(),
+          code,
+          color: formColor,
+          lead: formLead.trim() || 'Unassigned',
+          description: formDescription.trim(),
+          locationId: formLocationId || undefined,
+          locationName: selectedLoc?.name || undefined,
+        });
+      } else {
+        await addDepartment({
+          name: formName.trim(),
+          code,
+          color: formColor,
+          lead: formLead.trim() || 'Unassigned',
+          description: formDescription.trim(),
+          locationId: formLocationId || undefined,
+          locationName: selectedLoc?.name || undefined,
+        });
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      console.error('Failed to save department:', err);
+      const msg = err.response?.data?.message;
+      setFormError(typeof msg === 'string' ? msg : 'Failed to save department. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
-
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deletingId) {
-      deleteDepartment(deletingId);
-      setDeletingId(null);
+      setFormError('');
+      try {
+        await deleteDepartment(deletingId);
+        setDeletingId(null);
+      } catch (err: any) {
+        console.error('Failed to delete department:', err);
+        alert(err.response?.data?.message || 'Failed to delete department.');
+      }
     }
   };
 
@@ -216,15 +234,29 @@ export const DepartmentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Department Cards Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '20px'
-        }}
-      >
-        {filteredDepartments.map((dept) => (
+      {loading && departments.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+          Loading departments...
+        </div>
+      ) : filteredDepartments.length === 0 ? (
+        <div className="glass-card text-center" style={{ padding: '60px 40px' }}>
+          <Building2 size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', opacity: 0.5 }} />
+          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>No Departments Found</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', maxWidth: '480px', margin: '0 auto', marginBottom: '20px' }}>
+            {searchQuery || locationFilter !== 'all' 
+              ? 'No departments match your current filter settings.' 
+              : 'There are no departments configured yet. Click "Add Department" to create one.'}
+          </p>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '20px'
+          }}
+        >
+          {filteredDepartments.map((dept) => (
           <div
             key={dept.id}
             style={{
@@ -356,6 +388,7 @@ export const DepartmentManagement: React.FC = () => {
           </div>
         ))}
       </div>
+    )}
 
       {/* Create / Edit Modal */}
       {isModalOpen && (
@@ -412,6 +445,20 @@ export const DepartmentManagement: React.FC = () => {
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+              {formError && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '16px',
+                  fontSize: '13px',
+                  color: '#f87171',
+                  textAlign: 'left'
+                }}>
+                  {formError}
+                </div>
+              )}
               {/* Department Name & Code */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div>
@@ -586,8 +633,9 @@ export const DepartmentManagement: React.FC = () => {
                   Cancel
                 </button>
 
-                <button
+                 <button
                   type="submit"
+                  disabled={actionLoading}
                   style={{
                     background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                     color: '#ffffff',
@@ -596,11 +644,12 @@ export const DepartmentManagement: React.FC = () => {
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontWeight: 600,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                    cursor: actionLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    opacity: actionLoading ? 0.7 : 1
                   }}
                 >
-                  {editingDept ? 'Save Changes' : 'Create Department'}
+                  {actionLoading ? 'Saving...' : (editingDept ? 'Save Changes' : 'Create Department')}
                 </button>
               </div>
             </form>

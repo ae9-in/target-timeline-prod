@@ -83,7 +83,9 @@ a {
   left: 0;
   top: 0;
   z-index: 100;
-  padding: 24px 16px;
+  /* No vertical padding here — logo and footer handle their own spacing */
+  padding: 0;
+  overflow: hidden;
 }
 
 .sidebar-logo {
@@ -94,8 +96,9 @@ a {
   font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--text-primary);
-  margin-bottom: 32px;
-  padding-left: 8px;
+  margin-bottom: 16px;
+  padding: 24px 24px 8px;
+  flex-shrink: 0;
 }
 
 .sidebar-logo svg {
@@ -105,8 +108,13 @@ a {
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1;
+  gap: 4px;
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 16px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
 }
 
 .nav-item {
@@ -136,10 +144,11 @@ a {
 
 .sidebar-footer {
   border-top: 1px solid var(--border-color);
-  padding-top: 16px;
+  padding: 16px 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .user-profile {
@@ -2052,4 +2061,230 @@ a {
 }
 .gantt-scrubber-input::-moz-range-track {
   background: transparent;
-}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Admin Portal — Amber/Orange accent theme
+   Keeps admin portal visually distinct from the main app at a glance.
+════════════════════════════════════════════════════════════════════════════*/
+
+:root {
+  --admin-accent: #f59e0b;
+  --admin-accent-hover: #d97706;
+  --admin-accent-glow: rgba(245, 158, 11, 0.18);
+  --admin-accent-border: rgba(245, 158, 11, 0.25);
+
+  /* Generic surface/border aliases used by admin pages */
+  --surface: var(--bg-surface);
+  --surface-2: rgba(255,255,255,0.04);
+  --border: var(--border-color);
+  --accent: var(--color-primary);
+
+  /* Generic card/main-content used by admin pages */
+}
+
+/* Card utility (used in admin pages) */
+.card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Main content area (admin pages use padding directly) */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Blue badge variant (used by admin pages) */
+.badge.blue {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+}
+
+/* ── Admin button ────────────────────────────────────────────────────────── */
+.btn-admin {
+  background-color: var(--admin-accent);
+  color: #0a0b10;
+  border: 1px solid var(--admin-accent-hover);
+  font-weight: 700;
+}
+
+.btn-admin:hover {
+  background-color: var(--admin-accent-hover);
+  box-shadow: 0 0 16px var(--admin-accent-glow);
+}
+
+.btn-admin:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Admin sidebar ────────────────────────────────────────────────────────── */
+.admin-shell .sidebar {
+  border-right-color: var(--admin-accent-border);
+}
+
+.admin-sidebar-logo {
+  color: var(--admin-accent) !important;
+  gap: 10px !important;
+  margin-bottom: 8px !important;
+}
+
+.admin-sidebar-logo svg {
+  color: var(--admin-accent) !important;
+}
+
+.admin-portal-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--admin-accent);
+  background: var(--admin-accent-glow);
+  border: 1px solid var(--admin-accent-border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-nav-item.active {
+  background-color: var(--admin-accent-glow) !important;
+  color: var(--admin-accent) !important;
+  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.05) !important;
+}
+
+.admin-nav-item:hover {
+  background-color: rgba(245, 158, 11, 0.05) !important;
+  color: var(--admin-accent) !important;
+}
+
+.admin-user-avatar {
+  background: linear-gradient(135deg, var(--admin-accent), #d97706) !important;
+}
+
+.admin-view-app-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-radius: 6px;
+  transition: var(--transition-smooth);
+}
+
+.admin-view-app-link:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+}
+
+/* ── Admin header ────────────────────────────────────────────────────────── */
+.admin-header {
+  border-bottom-color: var(--admin-accent-border);
+}
+
+.admin-header-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--admin-accent);
+  background: var(--admin-accent-glow);
+  border: 1px solid var(--admin-accent-border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Admin login page ────────────────────────────────────────────────────── */
+.admin-login-container .login-glow,
+.admin-glow {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.10) 0%, rgba(0,0,0,0) 70%) !important;
+  top: -150px;
+  left: -150px;
+}
+
+.admin-login-container .login-glow-secondary,
+.admin-glow-secondary {
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.07) 0%, rgba(0,0,0,0) 70%) !important;
+  bottom: -100px;
+  right: -100px;
+}
+
+.admin-login-card {
+  border-color: var(--admin-accent-border) !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3), 0 0 40px rgba(245, 158, 11, 0.05) !important;
+}
+
+.admin-logo {
+  background-color: var(--admin-accent-glow) !important;
+  color: var(--admin-accent) !important;
+  border-color: var(--admin-accent-border) !important;
+}
+
+/* Admin portal badge — prominent warning pill at the top of the admin login card */
+.admin-portal-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--admin-accent);
+  background: var(--admin-accent-glow);
+  border: 1px solid var(--admin-accent-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  animation: pulseAdminBadge 3s ease-in-out infinite;
+}
+
+@keyframes pulseAdminBadge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.admin-login-container .form-input:focus {
+  border-color: var(--admin-accent) !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
+}
+
+.login-portal-switch {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--admin-accent);
+}
+
+.login-portal-switch a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.login-portal-switch a:hover {
+  opacity: 1;
+}
+
+/* Data table utility */
+.data-table th,
+.data-table td {
+  font-size: 13px;
+}
+
+.data-table tr:hover td {
+  background-color: rgba(255,255,255,0.015);
+}
+

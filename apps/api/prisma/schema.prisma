@@ -8,16 +8,22 @@ generator client {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  email           String   @unique
-  passwordHash    String
-  name            String
-  roles           Role[]   
-  verticalScope   String[] // e.g. ["Sales"] — empty/null = all verticals
-  mfaSecret       String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  refreshTokens   RefreshToken[]
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  passwordHash       String
+  name               String
+  roles              Role[]   
+  verticalScope      String[] // e.g. ["Sales"] — empty/null = all verticals
+  mfaSecret          String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  refreshTokens      RefreshToken[]
+  // Invite / lifecycle fields
+  status             String    @default("INVITED") // INVITED | ACTIVE | DISABLED
+  mustChangePassword Boolean   @default(true)
+  invitedBy          String?
+  invitedAt          DateTime?
+  lastLoginAt        DateTime?
 }
 
 model Role {
@@ -45,6 +51,20 @@ model Location {
   createdBy String?
   createdAt DateTime @default(now())
   targets   Target[]
+  departments Department[]
+}
+
+model Department {
+  id           String    @id @default(uuid())
+  name         String    @unique
+  code         String
+  color        String
+  lead         String    @default("Unassigned")
+  description  String?
+  isSystem     Boolean   @default(false)
+  locationId   String?
+  location     Location? @relation(fields: [locationId], references: [id])
+  createdAt    DateTime  @default(now())
 }
 
 model Target {

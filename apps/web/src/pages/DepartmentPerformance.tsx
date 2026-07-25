@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDepartments } from '../context/DepartmentContext';
 import { useLocations } from '../context/LocationContext';
 import ReactECharts from 'echarts-for-react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Building2 } from 'lucide-react';
 
 export const DepartmentPerformance: React.FC = () => {
   const { api } = useAuth();
@@ -33,15 +33,27 @@ export const DepartmentPerformance: React.FC = () => {
   }
 
   // Filter departments and targets by selected location
-  const scopedDepts = selectedLocationId === 'all'
-    ? departments
-    : departments.filter(d => d.locationId === selectedLocationId);
   const scopedTargets = selectedLocationId === 'all'
     ? targets
     : targets.filter(t => t.locationId === selectedLocationId);
 
-  // Calculate stats by department dynamically
-  const verticals = scopedDepts.map((d) => d.name);
+  const scopedDepts = selectedLocationId === 'all'
+    ? departments
+    : departments.filter(d => 
+        d.locationId === selectedLocationId || 
+        (!d.locationId && scopedTargets.some(t => t.vertical === d.name))
+      );
+
+  // Combine explicitly defined department names and any vertical names present on targets
+  const departmentNames = scopedDepts.map((d) => d.name);
+  const targetVerticals = Array.from(new Set(scopedTargets.map((t) => t.vertical).filter(Boolean)));
+  const verticals = Array.from(new Set([...departmentNames, ...targetVerticals]));
+
+  // Helper to get custom color for a vertical
+  const getVerticalColor = (verticalName: string) => {
+    const dept = departments.find(d => d.name.toLowerCase() === verticalName.toLowerCase());
+    return dept?.color || 'var(--color-primary)';
+  };
   
   const performanceData = verticals.map(v => {
     const vTargets = scopedTargets.filter(t => t.vertical === v);
@@ -202,55 +214,71 @@ export const DepartmentPerformance: React.FC = () => {
           ))}
         </div>
       )}
-      {/* Grid of Department Stats Summary */}
-      <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        {performanceData.map(d => (
-          <div key={d.vertical} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '18px', fontWeight: '800' }}>
-              {d.vertical}
-            </h3>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Total Targets:</span>
-              <span style={{ fontWeight: '700' }}>{d.total}</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Avg. Progress:</span>
-              <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{d.avgProgress}%</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Avg. Pace Gap:</span>
-              <span style={{ fontWeight: '700', color: d.avgGap > 10 ? 'var(--color-rag-red)' : d.avgGap > 0 ? 'var(--color-rag-amber)' : 'var(--color-rag-green)' }}>
-                {d.avgGap > 0 ? `-${d.avgGap}%` : 'On Track'}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid-cols-2">
-        {/* RAG Status Distribution Card */}
-        <div className="glass-card">
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '15px', fontWeight: 'bold' }}>
-            Targets Status Distribution
-          </h3>
-          <div style={{ height: '300px' }}>
-            <ReactECharts option={ragDistributionOption} style={{ height: '100%', width: '100%' }} />
-          </div>
+      {verticals.length === 0 ? (
+        <div className="glass-card text-center" style={{ padding: '60px 40px', marginTop: '20px' }}>
+          <Building2 size={48} style={{ color: 'var(--text-muted)', marginBottom: '16px', opacity: 0.5 }} />
+          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>No Departments or Targets Found</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', maxWidth: '480px', margin: '0 auto' }}>
+            It looks like there are no active departments or targets configured for this location yet. 
+            Go to the Departments page to create them, or create targets under Target Tracker.
+          </p>
         </div>
+      ) : (
+        <>
+          {/* Grid of Department Stats Summary */}
+          <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+            {performanceData.map(d => {
+              const accentColor = getVerticalColor(d.vertical);
+              return (
+                <div key={d.vertical} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: `4px solid ${accentColor}` }}>
+                  <h3 style={{ margin: 0, color: accentColor, fontSize: '18px', fontWeight: '800' }}>
+                    {d.vertical}
+                  </h3>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Total Targets:</span>
+                    <span style={{ fontWeight: '700' }}>{d.total}</span>
+                  </div>
 
-        {/* Progress Pace Gap Card */}
-        <div className="glass-card">
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '15px', fontWeight: 'bold' }}>
-            Average Progress Gap (% Behind Expected)
-          </h3>
-          <div style={{ height: '300px' }}>
-            <ReactECharts option={progressGapOption} style={{ height: '100%', width: '100%' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Avg. Progress:</span>
+                    <span style={{ fontWeight: '700', color: 'var(--color-accent)' }}>{d.avgProgress}%</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Avg. Pace Gap:</span>
+                    <span style={{ fontWeight: '700', color: d.avgGap > 10 ? 'var(--color-rag-red)' : d.avgGap > 0 ? 'var(--color-rag-amber)' : 'var(--color-rag-green)' }}>
+                      {d.avgGap > 0 ? `-${d.avgGap}%` : 'On Track'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      </div>
+
+          <div className="grid-cols-2">
+            {/* RAG Status Distribution Card */}
+            <div className="glass-card">
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '15px', fontWeight: 'bold' }}>
+                Targets Status Distribution
+              </h3>
+              <div style={{ height: '300px' }}>
+                <ReactECharts option={ragDistributionOption} style={{ height: '100%', width: '100%' }} />
+              </div>
+            </div>
+
+            {/* Progress Pace Gap Card */}
+            <div className="glass-card">
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '15px', fontWeight: 'bold' }}>
+                Average Progress Gap (% Behind Expected)
+              </h3>
+              <div style={{ height: '300px' }}>
+                <ReactECharts option={progressGapOption} style={{ height: '100%', width: '100%' }} />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

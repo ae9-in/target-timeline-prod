@@ -65,3 +65,11 @@ desktop.ini
 # Antigravity IDE
 .gemini/
 .antigravityignore
+
+# Temporary DB / test scripts
+apps/api/prisma/inspect-db.ts
+apps/api/prisma/delete-dummy-users.ts
+apps/api/prisma/grant-*.ts
+apps/api/prisma/reset-*.ts
+apps/api/prisma/test-*.ts
+apps/api/prisma/verify-*.ts

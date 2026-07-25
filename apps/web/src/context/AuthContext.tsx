@@ -8,15 +8,21 @@ interface User {
   name: string;
   roles: string[];
   verticalScope: string[];
+  mustChangePassword: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   accessToken: string | null;
   loading: boolean;
-  login: (email: string, pass: string, mfaCode?: string) => Promise<any>;
+  login: (email: string, pass: string, portal?: 'user' | 'admin', mfaCode?: string) => Promise<any>;
   completeMfaSetup: (token: string, code: string) => Promise<any>;
   logout: () => Promise<void>;
+  acceptInvite: (token: string, newPassword: string) => Promise<any>;
+  changePassword: (newPassword: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<{ message: string }>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   api: AxiosInstance;
 }
 
@@ -29,16 +35,12 @@ export const api = axios.create({
 });
 
 // ─── Singleton Refresh Promise ──────────────────────────────────────────────────
-// React 18 StrictMode double-invokes effects in development. This causes two
-// simultaneous POST /auth/refresh calls with the same cookie. The server rotates
-// the token on the first call, then the second call arrives with the now-revoked
-// token → "reuse detected" → entire token family killed → user logged out on
-// every page refresh.
-//
-// Fix: maintain a module-level in-flight promise. All concurrent callers (StrictMode
-// second invoke, multiple 401 retries, etc.) share the SAME promise, so only ONE
-// HTTP request ever reaches the server. The promise is cleared after it settles so
-// the next legitimate refresh (e.g. after the 15-min access token expires) works.
+// React 18 StrictMode double-invokes effects in development causing two
+// simultaneous POST /auth/refresh calls. The server rotates the token on the
+// first call; the second arrives with the revoked token → entire token family
+// killed → user logged out.
+// Fix: all concurrent callers share the SAME promise, only ONE HTTP request
+// ever reaches the server. The promise is cleared after it settles.
 let pendingRefresh: Promise<string> | null = null;
 
 const callRefresh = (): Promise<string> => {
@@ -46,9 +48,7 @@ const callRefresh = (): Promise<string> => {
     pendingRefresh = axios
       .post<{ accessToken: string }>('/api/auth/refresh', {}, { withCredentials: true })
       .then((res) => res.data.accessToken)
-      .finally(() => {
-        pendingRefresh = null;
-      });
+      .finally(() => { pendingRefresh = null; });
   }
   return pendingRefresh;
 };
@@ -95,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ) {
           originalRequest._retry = true;
           try {
-            // Use the singleton so multiple concurrent 401s share one refresh call
             const token = await callRefresh();
             tokenRef.current = token;
             setAccessToken(token);
@@ -137,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: payload.name,
           roles: payload.roles,
           verticalScope: payload.verticalScope,
+          mustChangePassword: payload.mustChangePassword ?? false,
         });
       } catch {
         // No valid session — stay logged out
@@ -148,8 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  const login = async (email: string, pass: string, mfaCode?: string) => {
-    const res = await api.post('/auth/login', { email, pass, mfaCode });
+  const login = async (email: string, pass: string, portal: 'user' | 'admin' = 'user', mfaCode?: string) => {
+    const res = await api.post('/auth/login', { email, pass, mfaCode, portal });
     const data = res.data;
 
     if (data.mfaSetupRequired || data.mfaRequired) {
@@ -169,6 +169,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data;
   };
 
+  const acceptInvite = async (token: string, newPassword: string) => {
+    const res = await api.post('/auth/accept-invite', { token, newPassword });
+    const data = res.data;
+    setAccessToken(data.accessToken);
+    setUser(data.user);
+    return data;
+  };
+
+  const changePassword = async (newPassword: string) => {
+    await api.post('/auth/change-password', { newPassword });
+    // Clear the flag locally without a full token refresh
+    setUser((prev) => prev ? { ...prev, mustChangePassword: false } : prev);
+  };
+
   const logout = async () => {
     try {
       await api.post('/auth/logout');
@@ -180,8 +194,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signUp = async (name: string, email: string, password: string): Promise<{ message: string }> => {
+    const res = await api.post('/auth/signup', { name, email, password });
+    return res.data;
+  };
+
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    await api.post('/auth/reset-password/request', { email });
+  };
+
+  const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+    await api.post('/auth/reset-password/confirm', { token, newPass: newPassword });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, completeMfaSetup, logout, api }}>
+    <AuthContext.Provider
+      value={{ user, accessToken, loading, login, completeMfaSetup, logout, acceptInvite, changePassword, signUp, requestPasswordReset, resetPassword, api }}
+    >
       {children}
     </AuthContext.Provider>
   );

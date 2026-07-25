@@ -30,8 +30,9 @@ export const Alerts: React.FC = () => {
     try {
       await api.patch(`/alerts/${id}/acknowledge`);
       fetchAlerts();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error acknowledging alert', err);
+      alert(err.response?.data?.message || 'Failed to acknowledge alert. Please try again.');
     }
   };
 
@@ -39,8 +40,9 @@ export const Alerts: React.FC = () => {
     try {
       await api.patch(`/alerts/${id}/resolve`);
       fetchAlerts();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error resolving alert', err);
+      alert(err.response?.data?.message || 'Failed to resolve alert. Please try again.');
     }
   };
 
