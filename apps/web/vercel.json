@@ -1,12 +1,11 @@
 {
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://target-timeline-prod.onrender.com/:path*"
     },
     {
-      "source": "/((?!assets/|favicon.ico|public/).*)",
+      "source": "/((?!api/|assets/|favicon\\.ico|.*\\.js|.*\\.css|.*\\.png|.*\\.svg|.*\\.ico).*)",
       "destination": "/index.html"
     }
   ]
