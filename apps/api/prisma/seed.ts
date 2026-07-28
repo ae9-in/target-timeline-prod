@@ -118,55 +118,75 @@ async function main() {
     });
   }
 
-  const adminPasswordHash = await bcrypt.hash('Admin@123', 12);
+  // Hash passwords
+  const adminPasswordHash = await bcrypt.hash('AdminSecure123!', 12);
+  const leaderPasswordHash = await bcrypt.hash('LeaderSecure123!', 12);
+  const salesPasswordHash = await bcrypt.hash('SalesSecure123!', 12);
+  const prodPasswordHash = await bcrypt.hash('ProdSecure123!', 12);
+  const hrPasswordHash = await bcrypt.hash('HrSecure123!', 12);
+  const plannerPasswordHash = await bcrypt.hash('PlannerSecure123!', 12);
+  const viewerPasswordHash = await bcrypt.hash('ViewerSecure123!', 12);
+
+  // Clean up old test accounts if they exist (to avoid clutter from the old seed)
+  const oldEmails = [
+    'admin@tt.com',
+    'leadership@targets.com',
+    'sales_mgr@targets.com',
+    'prod_mgr@targets.com',
+    'hr_mgr@targets.com',
+    'viewer_sales@targets.com',
+  ];
+  await prisma.user.deleteMany({
+    where: { email: { in: oldEmails } },
+  });
 
   // 3. Create Users
   const usersToSeed = [
     {
-      email: 'admin@tt.com',
+      email: 'admin@targets.com',
       passwordHash: adminPasswordHash,
       name: 'Super Admin',
       roles: { connect: [{ id: roles.SUPER_ADMIN.id }] },
       verticalScope: [],
     },
     {
-      email: 'leadership@targets.com',
-      passwordHash,
+      email: 'leader@targets.com',
+      passwordHash: leaderPasswordHash,
       name: 'Leadership User',
       roles: { connect: [{ id: roles.LEADERSHIP.id }] },
       verticalScope: [],
     },
     {
-      email: 'sales_mgr@targets.com',
-      passwordHash,
+      email: 'sales@targets.com',
+      passwordHash: salesPasswordHash,
       name: 'Sales Manager',
       roles: { connect: [{ id: roles.SALES_MANAGER.id }] },
       verticalScope: ['Sales'],
     },
     {
-      email: 'prod_mgr@targets.com',
-      passwordHash,
+      email: 'prod@targets.com',
+      passwordHash: prodPasswordHash,
       name: 'Production Manager',
       roles: { connect: [{ id: roles.PRODUCTION_MANAGER.id }] },
       verticalScope: ['Production'],
     },
     {
-      email: 'hr_mgr@targets.com',
-      passwordHash,
+      email: 'hr@targets.com',
+      passwordHash: hrPasswordHash,
       name: 'HR Manager',
       roles: { connect: [{ id: roles.HR_MANAGER.id }] },
       verticalScope: ['Hiring'],
     },
     {
       email: 'planner@targets.com',
-      passwordHash,
+      passwordHash: plannerPasswordHash,
       name: 'Planning Analyst',
       roles: { connect: [{ id: roles.PLANNING_ANALYST.id }] },
       verticalScope: [],
     },
     {
-      email: 'viewer_sales@targets.com',
-      passwordHash,
+      email: 'viewer@targets.com',
+      passwordHash: viewerPasswordHash,
       name: 'Sales Viewer',
       roles: { connect: [{ id: roles.VIEWER.id }] },
       verticalScope: ['Sales'],
@@ -179,6 +199,7 @@ async function main() {
       update: {
         roles: userData.roles,
         verticalScope: userData.verticalScope,
+        passwordHash: userData.passwordHash,
       },
       create: userData,
     });

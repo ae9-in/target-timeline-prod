@@ -54,6 +54,8 @@ apps/api/node_modules/.prisma/
 apps/api/test-report.ts
 *.tmp
 *.temp
+scratch_*.js
+apps/api/scratch_*.js
 
 # Editor & System Files
 .vscode/

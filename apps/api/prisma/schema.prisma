@@ -155,7 +155,7 @@ model RefreshToken {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String
+  tokenHash  String   @unique
   familyId   String   
   expiresAt  DateTime
   revokedAt  DateTime?

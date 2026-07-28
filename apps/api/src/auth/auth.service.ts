@@ -264,7 +264,7 @@ export class AuthService {
   async rotateRefreshToken(token: string, userAgent: string, ip: string): Promise<{ accessToken: string; refreshToken: string }> {
     const tokenHash = this.hashToken(token);
 
-    const dbToken = await this.prisma.refreshToken.findFirst({
+    const dbToken = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
       include: { user: { include: { roles: true } } },
     });
@@ -314,7 +314,7 @@ export class AuthService {
 
   async logout(token: string, ip: string): Promise<void> {
     const tokenHash = this.hashToken(token);
-    const dbToken = await this.prisma.refreshToken.findFirst({
+    const dbToken = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
     });
 
