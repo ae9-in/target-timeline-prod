@@ -119,7 +119,7 @@ async function main() {
   }
 
   // Hash passwords
-  const adminPasswordHash = await bcrypt.hash('AdminSecure123!', 12);
+  const adminPasswordHash = await bcrypt.hash('AksharaAdmin@123!', 12);
   const leaderPasswordHash = await bcrypt.hash('LeaderSecure123!', 12);
   const salesPasswordHash = await bcrypt.hash('SalesSecure123!', 12);
   const prodPasswordHash = await bcrypt.hash('ProdSecure123!', 12);
@@ -135,6 +135,7 @@ async function main() {
     'prod_mgr@targets.com',
     'hr_mgr@targets.com',
     'viewer_sales@targets.com',
+    'admin@targets.com',
   ];
   await prisma.user.deleteMany({
     where: { email: { in: oldEmails } },
@@ -143,7 +144,7 @@ async function main() {
   // 3. Create Users
   const usersToSeed = [
     {
-      email: 'admin@targets.com',
+      email: 'admin@target.com',
       passwordHash: adminPasswordHash,
       name: 'Super Admin',
       roles: { connect: [{ id: roles.SUPER_ADMIN.id }] },

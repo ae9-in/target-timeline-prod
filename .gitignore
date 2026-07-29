@@ -75,3 +75,6 @@ apps/api/prisma/grant-*.ts
 apps/api/prisma/reset-*.ts
 apps/api/prisma/test-*.ts
 apps/api/prisma/verify-*.ts
+
+# Agent Customizations
+.agents/
