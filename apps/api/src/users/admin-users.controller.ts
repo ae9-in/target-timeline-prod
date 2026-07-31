@@ -36,13 +36,6 @@ export class AdminUsersController {
     return this.usersService.findAll({ role, vertical, status });
   }
 
-  // ─── Get single user ────────────────────────────────────────────────────────
-
-  @Get(':id')
-  @RequirePermission('user', 'read')
-  async findById(@Param('id') id: string) {
-    return this.usersService.findById(id);
-  }
 
   // ─── Invite / create user ────────────────────────────────────────────────────
 
@@ -177,6 +170,14 @@ export class AdminUsersController {
   @RequirePermission('user', 'read')
   async getPendingResets() {
     return this.authService.getPendingResets();
+  }
+
+  // ─── Get single user ────────────────────────────────────────────────────────
+
+  @Get(':id')
+  @RequirePermission('user', 'read')
+  async findById(@Param('id') id: string) {
+    return this.usersService.findById(id);
   }
 
   @Post(':id/approve-reset')

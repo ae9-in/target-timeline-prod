@@ -26,12 +26,12 @@ interface DepartmentContextType {
 const DepartmentContext = createContext<DepartmentContextType | undefined>(undefined);
 
 export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, api } = useAuth();
+  const { user, api, accessToken } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refreshDepartments = async () => {
-    if (!user) {
+    if (!user || !accessToken) {
       setDepartments([]);
       return;
     }
@@ -49,7 +49,7 @@ export const DepartmentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Re-fetch when user logs in or API instance changes
   useEffect(() => {
     refreshDepartments();
-  }, [user, api]);
+  }, [user, api, accessToken]);
 
   const addDepartment = async (deptData: Omit<Department, 'id'>): Promise<Department> => {
     const res = await api.post('/departments', deptData);

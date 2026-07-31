@@ -25,7 +25,7 @@ interface LocationContextType {
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { api, user } = useAuth();
+  const { api, user, accessToken } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [allLocations, setAllLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const isAdmin = user?.roles?.includes('SUPER_ADMIN') ?? false;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !accessToken) return;
     let cancelled = false;
 
     const fetchLocations = async () => {
@@ -62,7 +62,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     fetchLocations();
     return () => { cancelled = true; };
-  }, [api, user, isAdmin, tick]);
+  }, [api, user, accessToken, isAdmin, tick]);
 
   const createLocation = async (data: { name: string; address?: string; timezone?: string }) => {
     const res = await api.post<Location>('/locations', data);

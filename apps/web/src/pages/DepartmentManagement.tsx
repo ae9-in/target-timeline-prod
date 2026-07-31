@@ -224,8 +224,12 @@ export const DepartmentManagement: React.FC = () => {
               fontSize: '13px', outline: 'none', cursor: 'pointer',
             }}
           >
-            <option value="all">All Locations</option>
-            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            <option value="all" style={{ background: '#141520', color: '#ffffff' }}>All Locations</option>
+            {locations.map(l => (
+              <option key={l.id} value={l.id} style={{ background: '#141520', color: '#ffffff' }}>
+                {l.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -550,8 +554,12 @@ export const DepartmentManagement: React.FC = () => {
                     outline: 'none', cursor: 'pointer',
                   }}
                 >
-                  <option value="">Select a location...</option>
-                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  <option value="" style={{ background: '#141520', color: '#ffffff' }}>Select a location...</option>
+                  {locations.map(l => (
+                    <option key={l.id} value={l.id} style={{ background: '#141520', color: '#ffffff' }}>
+                      {l.name}
+                    </option>
+                  ))}
                 </select>
                 {locations.length === 0 && (
                   <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#f59e0b' }}>
