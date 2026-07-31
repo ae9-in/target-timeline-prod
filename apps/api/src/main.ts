@@ -40,18 +40,22 @@ async function bootstrap() {
   return cachedServer;
 }
 
-// For non-Vercel environments (Local development & Render production)
 if (!process.env.VERCEL) {
-  bootstrap().then(async (server) => {
-    const port = process.env.PORT ?? 3000;
-    await new Promise<void>((resolve, reject) => {
-      server.listen(port, (err?: any) => {
-        if (err) return reject(err);
-        resolve();
+  bootstrap()
+    .then(async (server) => {
+      const port = process.env.PORT ?? 3000;
+      await new Promise<void>((resolve, reject) => {
+        server.listen(port, (err?: any) => {
+          if (err) return reject(err);
+          resolve();
+        });
       });
+      console.log(`Backend API is running on: http://localhost:${port}`);
+    })
+    .catch((err) => {
+      console.error('Failed to start application:', err);
+      process.exit(1);
     });
-    console.log(`Backend API is running on: http://localhost:${port}`);
-  });
 }
 
 // Export default serverless handler for Vercel

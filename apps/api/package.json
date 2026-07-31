@@ -9,6 +9,7 @@
     "build": "prisma generate --schema=prisma/schema.prisma && nest build",
     "vercel-build": "prisma generate --schema=prisma/schema.prisma",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "predev": "prisma migrate deploy --schema=prisma/schema.prisma",
     "dev": "nodemon",
     "start": "node dist/src/main",
     "start:dev": "nest start --watch",
