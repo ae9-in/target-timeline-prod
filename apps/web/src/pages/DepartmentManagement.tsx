@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useDepartments } from '../context/DepartmentContext';
 import type { Department } from '../context/DepartmentContext';
 import { useLocations } from '../context/LocationContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   Building2, Plus, Edit2, Trash2, Search, X, Check, User, MapPin
 } from 'lucide-react';
@@ -22,6 +23,8 @@ const PRESET_COLORS = [
 export const DepartmentManagement: React.FC = () => {
   const { departments, loading, addDepartment, updateDepartment, deleteDepartment } = useDepartments();
   const { locations } = useLocations();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') ?? false;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('all');
@@ -154,28 +157,30 @@ export const DepartmentManagement: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          style={{
-            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-            color: '#ffffff',
-            border: 'none',
-            padding: '10px 18px',
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <Plus size={18} />
-          <span>Add Department</span>
-        </button>
+        {isSuperAdmin && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              color: '#ffffff',
+              border: 'none',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Plus size={18} />
+            <span>Add Department</span>
+          </button>
+        )}
       </div>
 
       {/* Controls Bar */}
@@ -332,48 +337,26 @@ export const DepartmentManagement: React.FC = () => {
               </p>
             </div>
 
-            {/* Card Footer Actions */}
-            <div
-              style={{
-                marginTop: 'auto',
-                padding: '12px 20px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: '8px'
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => openEditModal(dept)}
+            {isSuperAdmin && (
+              <div
                 style={{
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#ffffff',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 500,
+                  marginTop: 'auto',
+                  padding: '12px 20px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  cursor: 'pointer'
+                  justifyContent: 'flex-end',
+                  gap: '8px'
                 }}
               >
-                <Edit2 size={13} />
-                <span>Edit</span>
-              </button>
-
-              {!dept.isSystem && (
                 <button
                   type="button"
-                  onClick={() => setDeletingId(dept.id)}
+                  onClick={() => openEditModal(dept)}
                   style={{
-                    background: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#f87171',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#ffffff',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     fontSize: '12px',
@@ -384,11 +367,34 @@ export const DepartmentManagement: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  <Trash2 size={13} />
-                  <span>Delete</span>
+                  <Edit2 size={13} />
+                  <span>Edit</span>
                 </button>
-              )}
-            </div>
+
+                {!dept.isSystem && (
+                  <button
+                    type="button"
+                    onClick={() => setDeletingId(dept.id)}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      color: '#f87171',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
