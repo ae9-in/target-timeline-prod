@@ -119,6 +119,8 @@ export class TargetsService {
       },
     });
 
+    await this.evaluateAlertsForTarget(target.id);
+
     return this.enrichTarget(target);
   }
 
@@ -194,6 +196,8 @@ export class TargetsService {
       },
     });
 
+    await this.evaluateAlertsForTarget(targetAfter.id);
+
     return this.enrichTarget(targetAfter);
   }
 
@@ -244,5 +248,64 @@ export class TargetsService {
     });
 
     return history;
+  }
+
+  async evaluateAlertsForTarget(targetId: string) {
+    const target = await this.prisma.target.findUnique({
+      where: { id: targetId },
+    });
+    if (!target) return;
+
+    const status = calculateRagStatus(
+      target.startDate,
+      target.deadline,
+      target.baseline,
+      target.targetValue,
+      target.currentValue,
+      target.direction as 'up' | 'down',
+      new Date(),
+    );
+
+    const activeAlert = await this.prisma.alert.findFirst({
+      where: {
+        targetId: target.id,
+        resolvedAt: null,
+      },
+    });
+
+    const now = new Date();
+
+    if (status.ragStatus === 'RED' || status.ragStatus === 'AMBER') {
+      if (!activeAlert) {
+        // Raise new alert
+        await this.prisma.alert.create({
+          data: {
+            targetId: target.id,
+            ragStatus: status.ragStatus,
+            gapPoints: status.gap,
+            raisedAt: now,
+          },
+        });
+      } else {
+        // Update active alert gap/status
+        await this.prisma.alert.update({
+          where: { id: activeAlert.id },
+          data: {
+            ragStatus: status.ragStatus,
+            gapPoints: status.gap,
+          },
+        });
+      }
+    } else {
+      // GREEN target: resolve alert if active
+      if (activeAlert) {
+        await this.prisma.alert.update({
+          where: { id: activeAlert.id },
+          data: {
+            resolvedAt: now,
+          },
+        });
+      }
+    }
   }
 }
