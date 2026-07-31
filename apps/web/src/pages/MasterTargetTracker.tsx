@@ -35,9 +35,9 @@ export const MasterTargetTracker: React.FC = () => {
   const [formOwner, setFormOwner] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
   const [formDeadline, setFormDeadline] = useState('');
-  const [formBaseline, setFormBaseline] = useState(0);
-  const [formTargetValue, setFormTargetValue] = useState(100);
-  const [formCurrentValue, setFormCurrentValue] = useState(0);
+  const [formBaseline, setFormBaseline] = useState<number | string>('');
+  const [formTargetValue, setFormTargetValue] = useState<number | string>('');
+  const [formCurrentValue, setFormCurrentValue] = useState<number | string>('');
   const [formUnit, setFormUnit] = useState('');
   const [formDirection, setFormDirection] = useState<'up' | 'down'>('up');
   const [formError, setFormError] = useState('');
@@ -159,9 +159,9 @@ export const MasterTargetTracker: React.FC = () => {
     setFormOwner('');
     setFormStartDate('');
     setFormDeadline('');
-    setFormBaseline(0);
-    setFormTargetValue(100);
-    setFormCurrentValue(0);
+    setFormBaseline('');
+    setFormTargetValue('');
+    setFormCurrentValue('');
     setFormUnit('');
     setFormDirection('up');
     setFormError('');
@@ -383,18 +383,18 @@ export const MasterTargetTracker: React.FC = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Baseline Value</label>
-                    <input type="number" className="form-input" required value={formBaseline} onChange={e => setFormBaseline(Number(e.target.value))} />
+                    <input type="number" className="form-input" required value={formBaseline} onChange={e => setFormBaseline(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Target Value</label>
-                    <input type="number" className="form-input" required value={formTargetValue} onChange={e => setFormTargetValue(Number(e.target.value))} />
+                    <input type="number" className="form-input" required value={formTargetValue} onChange={e => setFormTargetValue(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Current Value</label>
-                    <input type="number" className="form-input" required value={formCurrentValue} onChange={e => setFormCurrentValue(Number(e.target.value))} />
+                    <input type="number" className="form-input" required value={formCurrentValue} onChange={e => setFormCurrentValue(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Unit of Measure</label>
@@ -472,18 +472,18 @@ export const MasterTargetTracker: React.FC = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Baseline Value</label>
-                    <input type="number" className="form-input" disabled={isPlanner && !isManager} required value={formBaseline} onChange={e => setFormBaseline(Number(e.target.value))} />
+                    <input type="number" className="form-input" disabled={isPlanner && !isManager} required value={formBaseline} onChange={e => setFormBaseline(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Target Value</label>
-                    <input type="number" className="form-input" disabled={isPlanner && !isManager} required value={formTargetValue} onChange={e => setFormTargetValue(Number(e.target.value))} />
+                    <input type="number" className="form-input" disabled={isPlanner && !isManager} required value={formTargetValue} onChange={e => setFormTargetValue(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Current Value</label>
-                    <input type="number" className="form-input" disabled={isPlanner && !isManager} required value={formCurrentValue} onChange={e => setFormCurrentValue(Number(e.target.value))} />
+                    <input type="number" className="form-input" disabled={isPlanner && !isManager} required value={formCurrentValue} onChange={e => setFormCurrentValue(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Unit of Measure</label>
