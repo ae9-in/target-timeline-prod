@@ -63,6 +63,6 @@ export class ReportsService {
       },
     });
 
-    return report.pdfPath;
+    return report;
   }
 }

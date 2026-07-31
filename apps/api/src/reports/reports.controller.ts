@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermission } from '../rbac/require-permission.decorator';
 import * as fs from 'fs';
+import * as path from 'path';
+import { generatePdfReport } from './pdf-generator';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -39,10 +41,28 @@ export class ReportsController {
     @Ip() ip: string,
   ) {
     const userId = req.user.sub;
-    const pdfPath = await this.reportsService.getPdfPath(id, userId, ip || 'Unknown');
+    const report = await this.reportsService.getPdfPath(id, userId, ip || 'Unknown');
+    const pdfPath = report.pdfPath;
 
     if (!fs.existsSync(pdfPath)) {
-      throw new NotFoundException('PDF file not found on disk');
+      // Ensure directory exists (e.g. /tmp/reports on Vercel)
+      const dir = path.dirname(pdfPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      const summary = report.summary as any;
+      if (summary && (summary.GREEN !== undefined || summary.counts !== undefined)) {
+        const counts = summary.counts || { GREEN: summary.GREEN, AMBER: summary.AMBER, RED: summary.RED };
+        await generatePdfReport({
+          generatedAt: report.generatedAt,
+          counts,
+          verticalBreakdown: summary.verticalBreakdown || {},
+          targets: summary.targets || [],
+        }, pdfPath);
+      } else {
+        throw new NotFoundException('PDF file not found and cannot be regenerated');
+      }
     }
 
     res.setHeader('Content-Type', 'application/pdf');

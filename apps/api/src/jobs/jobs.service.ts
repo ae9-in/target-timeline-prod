@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service';
 import * as fs from 'fs';
 import * as path from 'path';
 import { calculateRagStatus } from '../targets/rag.util';
+import { generatePdfReport } from '../reports/pdf-generator';
 
 @Injectable()
 export class JobsService implements OnModuleInit, OnModuleDestroy {
@@ -155,14 +156,16 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
   // --- 3. Weekly Report Generation Logic ---
   async runWeeklyReport(): Promise<any> {
     const targets = await this.prisma.target.findMany();
+    const departments = await this.prisma.department.findMany();
     const now = new Date();
 
     const counts = { GREEN: 0, AMBER: 0, RED: 0 };
-    const verticalBreakdown: Record<string, typeof counts> = {
-      Sales: { GREEN: 0, AMBER: 0, RED: 0 },
-      Production: { GREEN: 0, AMBER: 0, RED: 0 },
-      Hiring: { GREEN: 0, AMBER: 0, RED: 0 },
-    };
+    const verticalBreakdown: Record<string, typeof counts> = {};
+    
+    // Initialize with all DB departments
+    for (const dept of departments) {
+      verticalBreakdown[dept.name] = { GREEN: 0, AMBER: 0, RED: 0 };
+    }
 
     const targetList: any[] = [];
 
@@ -178,9 +181,11 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       );
 
       counts[status.ragStatus]++;
-      if (verticalBreakdown[t.vertical]) {
-        verticalBreakdown[t.vertical][status.ragStatus]++;
+      
+      if (!verticalBreakdown[t.vertical]) {
+        verticalBreakdown[t.vertical] = { GREEN: 0, AMBER: 0, RED: 0 };
       }
+      verticalBreakdown[t.vertical][status.ragStatus]++;
 
       targetList.push({
         name: t.name,
@@ -194,147 +199,23 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
-    // Generate Beautiful HTML layout
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937; padding: 40px; margin: 0; background-color: #f9fafb; }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
-          .title { font-size: 26px; font-weight: bold; color: #111827; }
-          .date { font-size: 14px; color: #6b7280; }
-          .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 35px; }
-          .stat-card { border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #e5e7eb; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-          .stat-card.green { border-top: 4px solid #10b981; }
-          .stat-card.amber { border-top: 4px solid #f59e0b; }
-          .stat-card.red { border-top: 4px solid #ef4444; }
-          .stat-value { font-size: 32px; font-weight: bold; margin: 10px 0 5px 0; }
-          .stat-label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #6b7280; }
-          .section-title { font-size: 18px; font-weight: bold; color: #374151; margin-bottom: 15px; }
-          table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; margin-bottom: 35px; }
-          th { background-color: #f3f4f6; color: #374151; text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
-          td { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
-          .badge { display: inline-block; padding: 4px 8px; border-radius: 9999px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-          .badge.GREEN { background-color: #d1fae5; color: #065f46; }
-          .badge.AMBER { background-color: #fef3c7; color: #92400e; }
-          .badge.RED { background-color: #fee2e2; color: #991b1b; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">Targets & Timelines — Leadership RAG Report</div>
-          <div class="date">${now.toLocaleDateString()}</div>
-        </div>
-
-        <div class="section-title">Weekly Summary Statistics</div>
-        <div class="stats-grid">
-          <div class="stat-card green">
-            <div class="stat-label">On Track</div>
-            <div class="stat-value" style="color: #10b981;">${counts.GREEN}</div>
-            <div class="stat-label">Targets</div>
-          </div>
-          <div class="stat-card amber">
-            <div class="stat-label">At Risk</div>
-            <div class="stat-value" style="color: #f59e0b;">${counts.AMBER}</div>
-            <div class="stat-label">Targets</div>
-          </div>
-          <div class="stat-card red">
-            <div class="stat-label">Off Track</div>
-            <div class="stat-value" style="color: #ef4444;">${counts.RED}</div>
-            <div class="stat-label">Targets</div>
-          </div>
-        </div>
-
-        <div class="section-title">Department Performance Metrics</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Vertical</th>
-              <th style="color: #10b981;">Green</th>
-              <th style="color: #f59e0b;">Amber</th>
-              <th style="color: #ef4444;">Red</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${Object.entries(verticalBreakdown)
-              .map(
-                ([vertical, scores]) => `
-              <tr>
-                <td><strong>${vertical}</strong></td>
-                <td>${scores.GREEN}</td>
-                <td>${scores.AMBER}</td>
-                <td>${scores.RED}</td>
-              </tr>
-            `,
-              )
-              .join('')}
-          </tbody>
-        </table>
-
-        <div class="section-title">Target Breakdown Detailed View</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Target Name</th>
-              <th>Vertical</th>
-              <th>Owner</th>
-              <th>Current Progress</th>
-              <th>RAG Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${targetList
-              .map(
-                (item) => `
-              <tr>
-                <td>${item.name}</td>
-                <td>${item.vertical}</td>
-                <td>${item.owner}</td>
-                <td>${item.currentValue} / ${item.targetValue} ${item.unit} (${item.progress}%)</td>
-                <td><span class="badge ${item.ragStatus}">${item.ragStatus}</span></td>
-              </tr>
-            `,
-              )
-              .join('')}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
-
-    // Launch Puppeteer to render PDF
-    this.logger.log('Launching headless browser to render PDF weekly report...');
-    let browser;
     const reportId = `report_${now.getTime()}`;
     const pdfFileName = `${reportId}.pdf`;
     const pdfPath = path.join(this.reportsDir, pdfFileName);
 
+    this.logger.log(`Generating PDF weekly report with pdfkit at ${pdfPath}...`);
+
     try {
-      const puppeteer = await import('puppeteer');
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
-
-      await page.pdf({
-        path: pdfPath,
-        format: 'A4',
-        margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
-        printBackground: true,
-      });
+      await generatePdfReport({
+        generatedAt: now,
+        counts,
+        verticalBreakdown,
+        targets: targetList,
+      }, pdfPath);
       this.logger.log(`PDF Weekly Report successfully written to ${pdfPath}`);
     } catch (error) {
-      this.logger.error('Failed to generate PDF report with Puppeteer:', error);
+      this.logger.error('Failed to generate PDF report with pdfkit:', error);
       throw error;
-    } finally {
-      if (browser) {
-        await browser.close().catch((err) => this.logger.error('Error closing puppeteer browser:', err));
-      }
     }
 
     // Save report metadata to database
@@ -343,7 +224,11 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         id: reportId,
         generatedAt: now,
         pdfPath,
-        summary: counts,
+        summary: {
+          ...counts,
+          verticalBreakdown,
+          targets: targetList,
+        } as any,
       },
     });
 
