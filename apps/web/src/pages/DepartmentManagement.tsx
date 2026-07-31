@@ -494,10 +494,10 @@ export const DepartmentManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    maxLength={5}
+                    maxLength={3}
                     placeholder="OPS"
                     value={formCode}
-                    onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+                    onChange={(e) => setFormCode(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
