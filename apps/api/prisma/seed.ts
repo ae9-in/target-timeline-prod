@@ -135,7 +135,7 @@ async function main() {
   }
 
   // Hash passwords
-  const adminPasswordHash = await bcrypt.hash('AksharaAdmin@123!', 12);
+  const adminPasswordHash = await bcrypt.hash('AksharaSuperAdmin#2026!', 12);
   const leaderPasswordHash = await bcrypt.hash('LeaderSecure123!', 12);
   const salesPasswordHash = await bcrypt.hash('SalesSecure123!', 12);
   const prodPasswordHash = await bcrypt.hash('ProdSecure123!', 12);
