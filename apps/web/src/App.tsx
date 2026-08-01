@@ -82,7 +82,7 @@ const MainAppContent: React.FC = () => {
   }
 
   const roles = user.roles || [];
-  const hasLeadershipScope = roles.includes('SUPER_ADMIN') || roles.includes('LEADERSHIP');
+  const hasLeadershipScope = roles.includes('SUPER_ADMIN') || roles.includes('LEADERSHIP') || roles.includes('ADMIN');
 
   return (
     <div className="app-container">
@@ -171,7 +171,15 @@ const AppContent: React.FC = () => {
         element={
           user && !user.mustChangePassword
             ? <Navigate to="/dashboard" replace />
-            : <SignUpPage />
+            : <SignUpPage portal="user" />
+        }
+      />
+      <Route
+        path="/admin/signup"
+        element={
+          user && !user.mustChangePassword
+            ? <Navigate to="/dashboard" replace />
+            : <SignUpPage portal="admin" />
         }
       />
       <Route

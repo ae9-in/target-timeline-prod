@@ -42,13 +42,13 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 900000 } }) // 10/15-min for user portal; admin enforced in service
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body() body: { email: string; pass: string; mfaCode?: string; portal?: 'user' | 'admin' },
+    @Body() body: { email: string; pass: string; mfaCode?: string; portal?: 'user' | 'admin' | 'admin_user' },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    const portal = body.portal === 'admin' ? 'admin' : 'user';
+    const portal = body.portal === 'admin' ? 'admin' : (body.portal === 'admin_user' ? 'admin_user' : 'user');
     const result = await this.authService.validateUser(body.email, body.pass, body.mfaCode, ip, portal);
 
     if (result.mfaSetupRequired || result.mfaRequired) {
@@ -191,7 +191,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 300000 } }) // 5 per 5 minutes
   @HttpCode(HttpStatus.OK)
   async signUp(
-    @Body() body: { email: string; name: string; password: string },
+    @Body() body: { email: string; name: string; password: string; role?: string },
     @Ip() ip: string,
   ) {
     return this.authService.signUp(body, ip || 'Unknown');

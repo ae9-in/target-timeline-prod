@@ -24,7 +24,7 @@ export const DepartmentManagement: React.FC = () => {
   const { departments, loading, addDepartment, updateDepartment, deleteDepartment } = useDepartments();
   const { locations } = useLocations();
   const { user } = useAuth();
-  const isSuperAdmin = user?.roles?.includes('SUPER_ADMIN') ?? false;
+  const isSuperAdmin = (user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('ADMIN')) ?? false;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('all');

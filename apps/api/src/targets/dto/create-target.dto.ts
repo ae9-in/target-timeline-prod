@@ -111,4 +111,8 @@ export class UpdateTargetDto {
   @IsString()
   @IsOptional()
   locationId?: string;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
 }

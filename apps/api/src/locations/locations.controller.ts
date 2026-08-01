@@ -57,7 +57,7 @@ export class LocationsController {
 
   private requireAdmin(req: any) {
     const roles: string[] = req.user?.roles ?? [];
-    if (!roles.includes('SUPER_ADMIN')) {
+    if (!roles.includes('SUPER_ADMIN') && !roles.includes('ADMIN')) {
       throw new ForbiddenException('Only admins can manage locations');
     }
   }

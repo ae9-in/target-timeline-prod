@@ -1,10 +1,22 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Target, User, Mail, Lock, CheckCircle, ShieldAlert, ArrowRight, CheckCheck } from 'lucide-react';
+import { Target, User, Mail, Lock, CheckCircle, ShieldAlert, ArrowRight, CheckCheck, Shield, AlertTriangle } from 'lucide-react';
 
-export const SignUpPage: React.FC = () => {
+interface SignUpPageProps {
+  portal?: 'user' | 'admin';
+}
+
+export const SignUpPage: React.FC<SignUpPageProps> = ({ portal = 'user' }) => {
   const { signUp } = useAuth();
+  
+  // Detect if physically on the separate /admin/signup route
+  const isSuperAdminPortalSignup = portal === 'admin';
+
+  // Toggle state between 'user' and 'admin' on standard signup page
+  const [activePortal, setActivePortal] = useState<'user' | 'admin'>(portal);
+  
+  const isAdmin = isSuperAdminPortalSignup || activePortal === 'admin';
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -33,7 +45,7 @@ export const SignUpPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await signUp(name.trim(), email.trim(), pass);
+      await signUp(name.trim(), email.trim(), pass, isAdmin ? 'ADMIN' : 'VIEWER');
       setSubmitted(true);
     } catch (err: any) {
       const msg = err.response?.data?.message;
@@ -45,10 +57,10 @@ export const SignUpPage: React.FC = () => {
 
   if (submitted) {
     return (
-      <div className="login-container">
-        <div className="login-glow" />
-        <div className="login-glow-secondary" />
-        <div className="login-card" style={{ textAlign: 'center' }}>
+      <div className={`login-container ${isAdmin ? 'admin-login-container' : ''}`}>
+        <div className={`login-glow ${isAdmin ? 'admin-glow' : ''}`} />
+        <div className={`login-glow-secondary ${isAdmin ? 'admin-glow-secondary' : ''}`} />
+        <div className={`login-card ${isAdmin ? 'admin-login-card' : ''}`} style={{ textAlign: 'center' }}>
           <div style={{
             width: 72, height: 72, borderRadius: '50%',
             background: 'rgba(16, 185, 129, 0.12)',
@@ -58,10 +70,13 @@ export const SignUpPage: React.FC = () => {
           }}>
             <CheckCheck size={32} color="#10b981" />
           </div>
-          <h2 className="login-title" style={{ fontSize: '22px' }}>Request Submitted!</h2>
+          <h2 className="login-title" style={{ fontSize: '22px' }}>
+            {isAdmin ? 'Admin Request Submitted!' : 'Request Submitted!'}
+          </h2>
           <p className="login-subtitle" style={{ marginBottom: '28px', lineHeight: '1.6' }}>
-            Your account request is now awaiting admin approval.
-            You'll be able to sign in once an administrator reviews and approves your registration.
+            {isAdmin 
+              ? 'Your admin account request is now awaiting Super Admin approval. You will be able to sign in once a Super Admin reviews and approves your registration.'
+              : "Your account request is now awaiting admin approval. You'll be able to sign in once an administrator reviews and approves your registration."}
           </p>
           <div style={{
             background: 'rgba(16, 185, 129, 0.06)',
@@ -77,9 +92,13 @@ export const SignUpPage: React.FC = () => {
             textAlign: 'left',
           }}>
             <CheckCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-            <span>This typically takes up to 24 hours. You can try logging in after approval.</span>
+            <span>
+              {isAdmin 
+                ? 'This typically requires authorization by a Super Admin. You can try logging in after approval.'
+                : 'This typically takes up to 24 hours. You can try logging in after approval.'}
+            </span>
           </div>
-          <Link to="/login" className="btn btn-primary w-full" style={{ padding: '12px', justifyContent: 'center' }}>
+          <Link to={isAdmin ? '/admin/login' : '/login'} className={`btn ${isAdmin ? 'btn-admin' : 'btn-primary'} w-full`} style={{ padding: '12px', justifyContent: 'center' }}>
             Back to Sign In
           </Link>
         </div>
@@ -88,20 +107,88 @@ export const SignUpPage: React.FC = () => {
   }
 
   return (
-    <div className="login-container">
-      <div className="login-glow" />
-      <div className="login-glow-secondary" />
+    <div className={`login-container ${isAdmin ? 'admin-login-container' : ''}`}>
+      <div className={`login-glow ${isAdmin ? 'admin-glow' : ''}`} />
+      <div className={`login-glow-secondary ${isAdmin ? 'admin-glow-secondary' : ''}`} />
 
-      <div className="login-card" style={{ maxWidth: '440px' }}>
-        <div className="login-header">
-          <div className="login-logo">
-            <Target size={28} />
+      <div className={`login-card ${isAdmin ? 'admin-login-card' : ''}`} style={{ maxWidth: '440px' }}>
+        {isAdmin && (
+          <div className="admin-portal-badge" style={{ marginBottom: '16px' }}>
+            <AlertTriangle size={12} />
+            <span>ADMIN PORTAL — RESTRICTED REGISTRATION</span>
           </div>
-          <h2 className="login-title">Request Access</h2>
+        )}
+
+        <div className="login-header">
+          <div className={`login-logo ${isAdmin ? 'admin-logo' : ''}`}>
+            {isAdmin ? <Shield size={28} /> : <Target size={28} />}
+          </div>
+          <h2 className="login-title">
+            {isAdmin ? 'Request Admin Access' : 'Request Access'}
+          </h2>
           <p className="login-subtitle">
-            Create an account — requires admin approval to activate.
+            {isAdmin 
+              ? 'Create an admin account — requires Super Admin activation.'
+              : 'Create an account — requires admin approval to activate.'}
           </p>
         </div>
+
+        {/* Role Selector Tabs — ONLY show on standard signup page */}
+        {!isSuperAdminPortalSignup && (
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '10px',
+            padding: '4px',
+            marginBottom: '20px',
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePortal('user');
+                setError('');
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                background: !isAdmin ? 'var(--color-primary)' : 'transparent',
+                color: !isAdmin ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+              }}
+            >
+              Standard User
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePortal('admin');
+                setError('');
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                background: isAdmin ? 'var(--color-primary)' : 'transparent',
+                color: isAdmin ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+              }}
+            >
+              Administrator
+            </button>
+          </div>
+        )}
 
         {error && (
           <div
@@ -195,23 +282,27 @@ export const SignUpPage: React.FC = () => {
           <button
             id="signup-submit-btn"
             type="submit"
-            className="btn btn-primary w-full"
+            className={`btn ${isAdmin ? 'btn-admin' : 'btn-primary'} w-full`}
             style={{ padding: '12px', marginTop: '4px' }}
             disabled={loading}
           >
             {loading ? 'Submitting...' : (
-              <>Request Access <ArrowRight size={16} /></>
+              <>{isAdmin ? 'Request Admin Access' : 'Request Access'} <ArrowRight size={16} /></>
             )}
           </button>
         </form>
 
         <div className="login-footer-info" style={{ marginTop: '20px' }}>
-          <span>Your account will be reviewed by an administrator before activation.</span>
+          <span>
+            {isAdmin 
+              ? 'Your account must be reviewed and activated by a Super Admin before it can be used.'
+              : 'Your account will be reviewed by an administrator before activation.'}
+          </span>
         </div>
 
         <div className="login-portal-switch" style={{ textAlign: 'center', marginTop: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>
           Already have access?{' '}
-          <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+          <Link to={isAdmin ? '/admin/login' : '/login'} style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
             Sign in →
           </Link>
         </div>

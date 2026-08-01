@@ -34,8 +34,8 @@ export const Sidebar: React.FC = () => {
   const roles = user.roles || [];
   const isSuperAdmin = roles.includes('SUPER_ADMIN');
   const isLeadership = roles.includes('LEADERSHIP');
-  const showAnalytics = isSuperAdmin || isLeadership;
-  const showReports = isSuperAdmin || isLeadership;
+  const showAnalytics = isSuperAdmin || isLeadership || roles.includes('ADMIN');
+  const showReports = isSuperAdmin || isLeadership || roles.includes('ADMIN');
 
   const mainNavItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },

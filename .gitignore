@@ -82,3 +82,7 @@ apps/api/prisma/verify-*.ts
 # Temporary PDF Exports
 apps/api/tmp/
 tmp/
+
+# Local environment overrides
+.env.*.local
+.env.local

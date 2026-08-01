@@ -150,8 +150,9 @@ export class TargetsService {
 
   async update(
     id: string,
-    dto: UpdateTargetDto,
+    dto: UpdateTargetDto & { note?: string },
     userId: string,
+    userName: string,
     roles: string[],
     ip: string,
   ) {
@@ -264,7 +265,11 @@ export class TargetsService {
         resourceType: 'target',
         resourceId: id,
         before: JSON.parse(JSON.stringify(targetBefore)),
-        after: JSON.parse(JSON.stringify(targetAfter)),
+        after: {
+          ...JSON.parse(JSON.stringify(targetAfter)),
+          note: dto.note || '',
+          actorName: userName,
+        },
         ip,
       },
     });
@@ -321,6 +326,20 @@ export class TargetsService {
     });
 
     return history;
+  }
+
+  async getAuditLog(id: string, userVerticals: string[]) {
+    // Verify access via findOne
+    await this.findOne(id, userVerticals);
+
+    return this.prisma.auditLog.findMany({
+      where: {
+        resourceType: 'target',
+        resourceId: id,
+        action: { in: ['UPDATE', 'SCHEDULE_CHANGE'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async evaluateAlertsForTarget(targetId: string) {

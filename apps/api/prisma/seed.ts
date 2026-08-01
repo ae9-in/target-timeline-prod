@@ -12,6 +12,7 @@ async function main() {
   // 1. Create Roles
   const rolesData = [
     { name: 'SUPER_ADMIN' },
+    { name: 'ADMIN' },
     { name: 'LEADERSHIP' },
     { name: 'SALES_MANAGER' },
     { name: 'PRODUCTION_MANAGER' },
@@ -34,6 +35,17 @@ async function main() {
   const permissions = [
     // SUPER_ADMIN has * on all resources
     { roleId: roles.SUPER_ADMIN.id, resource: '*', action: '*', scope: null },
+
+    // ADMIN has * on all resources except user management and audit logs (Super Admin Console)
+    { roleId: roles.ADMIN.id, resource: 'target', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'department', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'alert', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'report', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'dashboard', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'timeline', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'calendar', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'department_performance', action: '*', scope: null },
+    { roleId: roles.ADMIN.id, resource: 'analytics', action: '*', scope: null },
 
     // LEADERSHIP has read-only on everything, export on report
     { roleId: roles.LEADERSHIP.id, resource: '*', action: 'read', scope: null },

@@ -6,7 +6,7 @@ import {
   UserCheck, AlertCircle, Link as LinkIcon,
 } from 'lucide-react';
 
-const ROLES = ['SUPER_ADMIN', 'LEADERSHIP', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST', 'VIEWER'];
+const ROLES = ['SUPER_ADMIN', 'ADMIN', 'LEADERSHIP', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST', 'VIEWER'];
 const VERTICALS = ['Sales', 'Production', 'HR', 'Planning'];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.FC<any> }> = {
@@ -116,7 +116,8 @@ export const AdminUsers: React.FC = () => {
     setActionLoading(`${userId}:approve-signup`);
     setOpenMenu(null);
     try {
-      const role = approveRole[userId] || 'VIEWER';
+      const user = pendingSignups.find((u) => u.id === userId);
+      const role = approveRole[userId] || user?.roles[0]?.name || 'VIEWER';
       await api.post(`/admin/users/${userId}/approve-signup`, { role });
       await Promise.all([fetchPending(), fetchUsers()]);
     } catch (err) {
@@ -427,7 +428,7 @@ export const AdminUsers: React.FC = () => {
                           <select
                             className="form-input"
                             style={{ width: '180px', padding: '7px 10px', fontSize: '13px' }}
-                            value={approveRole[u.id] || 'VIEWER'}
+                            value={approveRole[u.id] || u.roles[0]?.name || 'VIEWER'}
                             onChange={(e) => setApproveRole((prev) => ({ ...prev, [u.id]: e.target.value }))}
                           >
                             {ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}

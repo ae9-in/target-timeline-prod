@@ -27,6 +27,10 @@ export class ScheduleUpdateDto {
   @Min(0)
   @Max(100)
   progressPct?: number;
+
+  @IsString()
+  @IsOptional()
+  note?: string;
 }
 
 export class BaselineLabelDto {

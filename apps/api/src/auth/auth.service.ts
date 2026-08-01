@@ -9,7 +9,7 @@ import { getJwtKeys } from './keys';
 
 // ─── Admin portal role configuration ───────────────────────────────────────────
 // Extend this array (e.g. add 'OPS_ADMIN') without touching the login handler.
-const ADMIN_PORTAL_ROLES = ['SUPER_ADMIN'];
+const ADMIN_PORTAL_ROLES = ['SUPER_ADMIN', 'ADMIN'];
 
 class InMemoryRedis {
   private store = new Map<string, { value: string; expiresAt: number }>();
@@ -96,7 +96,7 @@ export class AuthService {
   // ─── Rate-limit / lockout helpers ───────────────────────────────────────────
 
   /** Track failed login attempts with per-portal keys */
-  async handleFailedLogin(email: string, ip: string, portal: 'user' | 'admin' = 'user'): Promise<void> {
+  async handleFailedLogin(email: string, ip: string, portal: 'user' | 'admin' | 'admin_user' = 'user'): Promise<void> {
     const key = `login_failures:${portal}:${email}`;
     const failures = await this.redis.incr(key);
 
@@ -116,7 +116,7 @@ export class AuthService {
     });
   }
 
-  async checkLockout(email: string, portal: 'user' | 'admin' = 'user'): Promise<void> {
+  async checkLockout(email: string, portal: 'user' | 'admin' | 'admin_user' = 'user'): Promise<void> {
     const key = `login_failures:${portal}:${email}`;
     const failures = await this.redis.get(key);
     const failureCount = failures ? parseInt(failures, 10) : 0;
@@ -135,7 +135,7 @@ export class AuthService {
     }
   }
 
-  async resetLockout(email: string, portal: 'user' | 'admin' = 'user'): Promise<void> {
+  async resetLockout(email: string, portal: 'user' | 'admin' | 'admin_user' = 'user'): Promise<void> {
     await this.redis.del(`login_failures:${portal}:${email}`);
   }
 
@@ -194,7 +194,7 @@ export class AuthService {
     pass: string,
     mfaCode?: string,
     ip?: string,
-    portal: 'user' | 'admin' = 'user',
+    portal: 'user' | 'admin' | 'admin_user' = 'user',
   ): Promise<any> {
     await this.checkLockout(email, portal);
 
@@ -222,9 +222,19 @@ export class AuthService {
     // Portal enforcement — must happen AFTER password check to avoid timing attacks
     if (portal === 'admin') {
       const userRoleNames = user.roles.map((r: any) => r.name);
-      const isAdminEligible = userRoleNames.some((r: string) => ADMIN_PORTAL_ROLES.includes(r));
-      if (!isAdminEligible) {
+      if (!userRoleNames.includes('SUPER_ADMIN')) {
+        return rejectGeneric('role not eligible for super admin portal');
+      }
+    } else if (portal === 'admin_user') {
+      const userRoleNames = user.roles.map((r: any) => r.name);
+      if (!userRoleNames.includes('ADMIN')) {
         return rejectGeneric('role not eligible for admin portal');
+      }
+    } else if (portal === 'user') {
+      const userRoleNames = user.roles.map((r: any) => r.name);
+      const hasAdminRole = userRoleNames.some((r: string) => ['SUPER_ADMIN', 'ADMIN'].includes(r));
+      if (hasAdminRole) {
+        return rejectGeneric('admin users must log in through the admin portal');
       }
     }
 
@@ -720,9 +730,9 @@ export class AuthService {
   }
 
   // ─── Self-service Sign Up (requires admin approval) ────────────────────────
-
+  
   async signUp(
-    dto: { email: string; name: string; password: string },
+    dto: { email: string; name: string; password: string; role?: string },
     ip: string,
   ): Promise<{ message: string }> {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
@@ -730,10 +740,11 @@ export class AuthService {
       // Generic message — don't reveal whether email exists
       return { message: 'Registration request submitted. Awaiting admin approval.' };
     }
-
-    // Assign a default viewer role
-    const viewerRole = await this.prisma.role.findFirst({ where: { name: 'VIEWER' } });
-
+  
+    // Determine requested role (default to VIEWER)
+    const requestedRoleName = dto.role === 'ADMIN' ? 'ADMIN' : 'VIEWER';
+    const dbRole = await this.prisma.role.findFirst({ where: { name: requestedRoleName } });
+  
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
@@ -744,7 +755,7 @@ export class AuthService {
         status: 'PENDING_APPROVAL',
         isActive: false,
         mustChangePassword: false,
-        ...(viewerRole ? { roles: { connect: [{ id: viewerRole.id }] } } : {}),
+        ...(dbRole ? { roles: { connect: [{ id: dbRole.id }] } } : {}),
       },
     });
 

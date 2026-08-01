@@ -15,12 +15,12 @@ interface AuthContextType {
   user: User | null;
   accessToken: string | null;
   loading: boolean;
-  login: (email: string, pass: string, portal?: 'user' | 'admin', mfaCode?: string) => Promise<any>;
+  login: (email: string, pass: string, portal?: 'user' | 'admin' | 'admin_user', mfaCode?: string) => Promise<any>;
   completeMfaSetup: (token: string, code: string) => Promise<any>;
   logout: () => Promise<void>;
   acceptInvite: (token: string, newPassword: string) => Promise<any>;
   changePassword: (newPassword: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<{ message: string }>;
+  signUp: (name: string, email: string, password: string, role?: string) => Promise<{ message: string }>;
   requestPasswordReset: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
   api: AxiosInstance;
@@ -88,10 +88,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
+        const isPublicAuthRoute = 
+          originalRequest.url === '/auth/login' ||
+          originalRequest.url === '/auth/signup' ||
+          originalRequest.url === '/auth/refresh' ||
+          originalRequest.url === '/auth/accept-invite' ||
+          originalRequest.url === '/auth/reset-password/request' ||
+          originalRequest.url === '/auth/reset-password/confirm';
+
         if (
           error.response?.status === 401 &&
           !originalRequest._retry &&
-          originalRequest.url !== '/auth/refresh'
+          !isPublicAuthRoute
         ) {
           originalRequest._retry = true;
           try {
@@ -148,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  const login = async (email: string, pass: string, portal: 'user' | 'admin' = 'user', mfaCode?: string) => {
+  const login = async (email: string, pass: string, portal: 'user' | 'admin' | 'admin_user' = 'user', mfaCode?: string) => {
     const res = await api.post('/auth/login', { email, pass, mfaCode, portal });
     const data = res.data;
 
@@ -194,8 +202,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (name: string, email: string, password: string): Promise<{ message: string }> => {
-    const res = await api.post('/auth/signup', { name, email, password });
+  const signUp = async (name: string, email: string, password: string, role?: string): Promise<{ message: string }> => {
+    const res = await api.post('/auth/signup', { name, email, password, role });
     return res.data;
   };
 

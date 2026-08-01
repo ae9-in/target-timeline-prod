@@ -130,6 +130,7 @@ export const Timeline: React.FC = () => {
   const [editStartDate, setEditStartDate] = useState<string>('');
   const [editDeadline, setEditDeadline] = useState<string>('');
   const [editError, setEditError] = useState<string | null>(null);
+  const [editNote, setEditNote] = useState<string>('');
   const [editSaving, setEditSaving] = useState<boolean>(false);
 
   // Drag-to-create state
@@ -197,7 +198,7 @@ export const Timeline: React.FC = () => {
 
   useEffect(() => {
     if (targets) {
-      setLocalTargets(targets);
+      setLocalTargets(targets.filter(t => t.progressPct !== 100));
     }
   }, [targets]);
 
@@ -503,7 +504,7 @@ export const Timeline: React.FC = () => {
   const hasEditAccess = useCallback((targetVertical: string) => {
     if (!user) return false;
     const isAllowedRole = user.roles.some((r: any) =>
-      ['SUPER_ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'].includes(r)
+      ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'].includes(r)
     );
     const isScoped = user.verticalScope && user.verticalScope.length > 0;
     return isAllowedRole && (!isScoped || user.verticalScope.includes(targetVertical));
@@ -1193,6 +1194,7 @@ export const Timeline: React.FC = () => {
     setEditValue(target.currentValue ?? 0);
     setEditStartDate(new Date(target.startDate).toISOString().split('T')[0]);
     setEditDeadline(new Date(target.deadline).toISOString().split('T')[0]);
+    setEditNote('');
     setEditError(null);
   };
 
@@ -1206,7 +1208,8 @@ export const Timeline: React.FC = () => {
         currentValue: Number(editValue),
         startDate: new Date(editStartDate).toISOString(),
         deadline: new Date(editDeadline).toISOString(),
-        progressPct: targetVal > 0 ? (Number(editValue) / targetVal) * 100 : 0
+        progressPct: targetVal > 0 ? (Number(editValue) / targetVal) * 100 : 0,
+        note: editNote
       };
 
       await api.put(`/targets/${editTargetModal.id}`, payload);
@@ -2566,6 +2569,31 @@ export const Timeline: React.FC = () => {
                     }}
                   />
                 </div>
+              </div>
+
+              {/* Note / Change Reason */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Update Note / Reason
+                </label>
+                <textarea
+                  placeholder="Provide a brief explanation for this update..."
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '70px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-color)',
+                    background: '#0d0e15',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    outline: 'none',
+                    resize: 'none',
+                    lineHeight: '1.4'
+                  }}
+                />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>

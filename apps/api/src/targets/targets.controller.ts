@@ -188,8 +188,9 @@ export class TargetsController {
     @Ip() ip?: string,
   ) {
     const userId = req.user.sub;
+    const userName = req.user.name || 'Unknown';
     const roles = req.user.roles || [];
-    return this.targetsService.update(id, updateTargetDto, userId, roles, ip || 'Unknown');
+    return this.targetsService.update(id, updateTargetDto, userId, userName, roles, ip || 'Unknown');
   }
 
   @Delete(':id')
@@ -204,6 +205,13 @@ export class TargetsController {
   async getHistory(@Param('id') id: string, @Req() req?: any) {
     const userVerticals = req.user.verticalScope || [];
     return this.targetsService.getHistory(id, userVerticals);
+  }
+
+  @Get(':id/audit-log')
+  @RequirePermission('target', 'read')
+  async getTargetAuditLog(@Param('id') id: string, @Req() req?: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.targetsService.getAuditLog(id, userVerticals);
   }
 
   // ─── Gantt :id-scoped routes ───
@@ -247,8 +255,9 @@ export class TargetsController {
     @Ip() ip?: string,
   ) {
     const userId = req.user.sub;
+    const userName = req.user.name || 'Unknown';
     const userVerticals = req.user.verticalScope || [];
     const roles = req.user.roles || [];
-    return this.ganttService.scheduleUpdate(id, dto, userId, userVerticals, roles, ip || 'Unknown');
+    return this.ganttService.scheduleUpdate(id, dto, userId, userName, userVerticals, roles, ip || 'Unknown');
   }
 }

@@ -20,6 +20,7 @@ export const TargetDetails: React.FC = () => {
   const [formStartDate, setFormStartDate] = useState<string>('');
   const [formDeadline, setFormDeadline] = useState<string>('');
   const [formError, setFormError] = useState<string>('');
+  const [formNote, setFormNote] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
 
   const fetchData = async () => {
@@ -33,9 +34,9 @@ export const TargetDetails: React.FC = () => {
       setHistory(historyRes.data);
 
       try {
-        const auditRes = await api.get('/audit-log');
-        const filteredLogs = auditRes.data.filter((log: any) => log.resourceId === id);
-        setAuditLogs(filteredLogs);
+        const auditRes = await api.get(`/targets/${id}/audit-log`);
+        const sortedLogs = auditRes.data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAuditLogs(sortedLogs);
       } catch (auditErr) {
         setAuditLogs([]);
       }
@@ -55,6 +56,7 @@ export const TargetDetails: React.FC = () => {
     setFormCurrentValue(target.currentValue ?? 0);
     setFormStartDate(new Date(target.startDate).toISOString().split('T')[0]);
     setFormDeadline(new Date(target.deadline).toISOString().split('T')[0]);
+    setFormNote('');
     setFormError('');
     setIsUpdateModalOpen(true);
   };
@@ -69,7 +71,8 @@ export const TargetDetails: React.FC = () => {
         currentValue: Number(formCurrentValue),
         startDate: new Date(formStartDate).toISOString(),
         deadline: new Date(formDeadline).toISOString(),
-        progressPct: target.targetValue > 0 ? (Number(formCurrentValue) / target.targetValue) * 100 : 0
+        progressPct: target.targetValue > 0 ? (Number(formCurrentValue) / target.targetValue) * 100 : 0,
+        note: formNote,
       };
 
       await api.put(`/targets/${id}`, payload);
@@ -265,31 +268,47 @@ export const TargetDetails: React.FC = () => {
       </div>
 
       {/* Target Specific Audit Trail */}
-      {auditLogs.length > 0 && (
-        <div className="glass-card">
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: 'bold' }}>Change Audit History</h3>
-          
-          <div className="audit-timeline">
-            {auditLogs.map((log) => (
-              <div key={log.id} className="audit-item">
-                <div className="audit-meta">
-                  <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>IP: {log.ip}</span>
+      <div className="glass-card">
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Target Update History</h3>
+        
+        <div className="audit-timeline" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {auditLogs.length > 0 ? (
+            auditLogs.map((log) => (
+              <div key={log.id} className="audit-item" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '16px' }}>
+                <div className="audit-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  <span style={{ fontWeight: 600, color: '#f3f4f6' }}>{log.after?.actorName || 'System'}</span>
                   <span>•</span>
                   <span>{new Date(log.createdAt).toLocaleString()}</span>
+                  <span>•</span>
+                  <span>IP: {log.ip || 'Unknown'}</span>
                 </div>
-                <div className="audit-desc">
-                  Action: <strong style={{ color: 'var(--color-accent)' }}>{log.action}</strong> 
+                <div className="audit-desc" style={{ fontSize: '14px', color: '#d1d5db' }}>
+                  Action: <strong style={{ color: '#3b82f6', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.05em' }}>{log.action}</strong>
                   {log.action === 'UPDATE' && (
-                    <span> 
-                      (Changed value from {log.before?.currentValue} to {log.after?.currentValue})
+                    <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>
+                      (Value changed from {log.before?.currentValue ?? 0} to {log.after?.currentValue ?? 0} {target.unit})
+                    </span>
+                  )}
+                  {log.action === 'SCHEDULE_CHANGE' && (
+                    <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>
+                      (Timeline rescheduled or progress changed to {Math.round(log.after?.progressPct ?? 0)}%)
                     </span>
                   )}
                 </div>
+                {log.after?.note && (
+                  <div style={{ marginTop: '8px', padding: '8px 12px', background: 'rgba(59, 130, 246, 0.03)', borderLeft: '3px solid #3b82f6', borderRadius: '4px', fontStyle: 'italic', color: '#9ca3af', fontSize: '12px', lineHeight: '1.4' }}>
+                    Note: "{log.after.note}"
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', borderRadius: '8px', fontSize: '13px' }}>
+              No updates recorded yet for this target. Use the "Adjust Progress" or "Update Progress & Timeline" options to log changes.
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Interactive Update Progress & Timeline Modal */}
       {isUpdateModalOpen && (
@@ -452,6 +471,31 @@ export const TargetDetails: React.FC = () => {
                     }}
                   />
                 </div>
+              </div>
+
+              {/* Note / Change Reason */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  Update Note / Reason
+                </label>
+                <textarea
+                  placeholder="Provide a brief explanation for this update..."
+                  value={formNote}
+                  onChange={(e) => setFormNote(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '70px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-color)',
+                    background: '#0d0e15',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    outline: 'none',
+                    resize: 'none',
+                    lineHeight: '1.4'
+                  }}
+                />
               </div>
 
               {/* Modal Action Buttons */}

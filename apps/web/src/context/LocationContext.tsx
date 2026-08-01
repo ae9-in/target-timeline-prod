@@ -33,7 +33,7 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const refetch = useCallback(() => setTick((n) => n + 1), []);
 
-  const isAdmin = user?.roles?.includes('SUPER_ADMIN') ?? false;
+  const isAdmin = (user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('ADMIN')) ?? false;
 
   useEffect(() => {
     if (!user || !accessToken) return;

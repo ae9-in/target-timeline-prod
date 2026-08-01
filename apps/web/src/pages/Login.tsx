@@ -17,8 +17,15 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
   const [loading, setLoading] = useState(false);
   const location = useLocation();
   const successMessage = (location.state as any)?.message;
+  
+  // This prop dictates whether this is the physically separate /admin/login page or the standard /login page.
+  const isSuperAdminPortal = portal === 'admin';
 
-  const isAdmin = portal === 'admin';
+  // If it's the standard /login page, we support a tab switcher between standard 'user' and standard 'admin_user' role log-in.
+  const [activePortal, setActivePortal] = useState<'user' | 'admin_user'>('user');
+  
+  // Resolve current visual state
+  const isCurrentlyAdmin = isSuperAdminPortal || activePortal === 'admin_user';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +33,10 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
     setLoading(true);
 
     try {
-      const data = await login(email, pass, portal);
+      // If we are on the /admin/login page, submit portal as 'admin' (strictly SUPER_ADMIN).
+      // Otherwise, submit as 'user' or 'admin_user' depending on the active tab.
+      const submitPortal = isSuperAdminPortal ? 'admin' : activePortal;
+      const data = await login(email, pass, submitPortal);
 
       if (data?.mfaSetupRequired || data?.mfaRequired) return;
 
@@ -37,9 +47,10 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
       }
 
       // Portal-specific landing pages
-      if (isAdmin) {
+      if (submitPortal === 'admin') {
         navigate('/admin/dashboard', { replace: true });
       } else {
+        // Both standard 'user' and standard 'admin_user' roles redirect to the main app dashboard
         navigate('/', { replace: true });
       }
     } catch (err: any) {
@@ -52,32 +63,91 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
   };
 
   return (
-    <div className={`login-container ${isAdmin ? 'admin-login-container' : ''}`}>
+    <div className={`login-container ${isCurrentlyAdmin ? 'admin-login-container' : ''}`}>
       {/* Background glows */}
-      <div className={`login-glow ${isAdmin ? 'admin-glow' : ''}`}></div>
-      <div className={`login-glow-secondary ${isAdmin ? 'admin-glow-secondary' : ''}`}></div>
+      <div className={`login-glow ${isCurrentlyAdmin ? 'admin-glow' : ''}`}></div>
+      <div className={`login-glow-secondary ${isCurrentlyAdmin ? 'admin-glow-secondary' : ''}`}></div>
 
-      <div className={`login-card ${isAdmin ? 'admin-login-card' : ''}`}>
+      <div className={`login-card ${isCurrentlyAdmin ? 'admin-login-card' : ''}`}>
 
         {/* Admin badge — visually distinguishable at a glance */}
-        {isAdmin && (
+        {isCurrentlyAdmin && (
           <div className="admin-portal-badge">
             <AlertTriangle size={12} />
-            <span>ADMIN PORTAL — RESTRICTED ACCESS</span>
+            <span>
+              {isSuperAdminPortal ? 'SUPER ADMIN PORTAL — RESTRICTED ACCESS' : 'ADMIN PORTAL — RESTRICTED ACCESS'}
+            </span>
           </div>
         )}
 
         <div className="login-header">
-          <div className={`login-logo ${isAdmin ? 'admin-logo' : ''}`}>
-            {isAdmin ? <Shield size={28} /> : <Target size={28} />}
+          <div className={`login-logo ${isCurrentlyAdmin ? 'admin-logo' : ''}`}>
+            {isCurrentlyAdmin ? <Shield size={28} /> : <Target size={28} />}
           </div>
           <h2 className="login-title">
-            {isAdmin ? 'Admin Console' : 'Targets & Timelines'}
+            {isSuperAdminPortal ? 'Super Admin Console' : (isCurrentlyAdmin ? 'Admin Portal' : 'Targets & Timelines')}
           </h2>
           <p className="login-subtitle">
-            {isAdmin ? 'Restricted access — authorized personnel only' : 'Sign in to your account'}
+            {isSuperAdminPortal ? 'Restricted access — authorized personnel only' : (isCurrentlyAdmin ? 'Sign in with admin credentials' : 'Sign in to your account')}
           </p>
         </div>
+
+        {/* Portal Tabs Selector — ONLY show on the standard /login page */}
+        {!isSuperAdminPortal && (
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '10px',
+            padding: '4px',
+            marginBottom: '24px',
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePortal('user');
+                setError('');
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activePortal === 'user' ? 'var(--color-primary)' : 'transparent',
+                color: activePortal === 'user' ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+              }}
+            >
+              User Login
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePortal('admin_user');
+                setError('');
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activePortal === 'admin_user' ? 'var(--color-primary)' : 'transparent',
+                color: activePortal === 'admin_user' ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+              }}
+            >
+              Admin Login
+            </button>
+          </div>
+        )}
 
         {successMessage && (
           <div
@@ -104,7 +174,7 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
             <div style={{ position: 'relative' }}>
               <Mail size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
               <input
-                id={isAdmin ? 'admin-email-input' : 'user-email-input'}
+                id={isCurrentlyAdmin ? 'admin-email-input' : 'user-email-input'}
                 type="email"
                 className="form-input"
                 placeholder="name@company.com"
@@ -122,7 +192,7 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
             <div style={{ position: 'relative' }}>
               <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
               <input
-                id={isAdmin ? 'admin-password-input' : 'user-password-input'}
+                id={isCurrentlyAdmin ? 'admin-password-input' : 'user-password-input'}
                 type="password"
                 className="form-input"
                 placeholder="••••••••"
@@ -133,7 +203,7 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
                 autoComplete="current-password"
               />
             </div>
-            {!isAdmin && (
+            {!isCurrentlyAdmin && (
               <div style={{ textAlign: 'right', marginTop: '6px' }}>
                 <Link
                   to="/forgot-password"
@@ -146,17 +216,17 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
           </div>
 
           <button
-            id={isAdmin ? 'admin-login-btn' : 'user-login-btn'}
+            id={isCurrentlyAdmin ? 'admin-login-btn' : 'user-login-btn'}
             type="submit"
-            className={`btn ${isAdmin ? 'btn-admin' : 'btn-primary'} w-full`}
+            className={`btn ${isCurrentlyAdmin ? 'btn-admin' : 'btn-primary'} w-full`}
             style={{ padding: '12px' }}
             disabled={loading}
           >
-            {loading ? 'Authenticating...' : isAdmin ? 'Access Admin Console' : 'Sign In'}
+            {loading ? 'Authenticating...' : isCurrentlyAdmin ? 'Access Admin Console' : 'Sign In'}
           </button>
         </form>
 
-        {isAdmin && (
+        {isCurrentlyAdmin && (
           <div className="login-footer-info">
             <span>
               <Shield size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
@@ -165,16 +235,27 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
           </div>
         )}
 
-        {isAdmin ? (
-          <div className="login-portal-switch">
-            <a href="/login">← Back to main app login</a>
+        {isSuperAdminPortal ? (
+          <div className="login-portal-switch" style={{ textAlign: 'center', marginTop: '16px' }}>
+            <Link to="/login" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>← Back to main app login</Link>
           </div>
         ) : (
           <div className="login-portal-switch" style={{ textAlign: 'center', marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)' }}>
-            Don't have an account?{' '}
-            <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
-              Request access →
-            </Link>
+            {isCurrentlyAdmin ? (
+              <>
+                Need an admin account?{' '}
+                <Link to="/admin/signup" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                  Request admin access →
+                </Link>
+              </>
+            ) : (
+              <>
+                Don't have an account?{' '}
+                <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                  Request access →
+                </Link>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -182,5 +263,4 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
   );
 };
 
-// Default export alias so App.tsx import is backwards compatible
 export default Login;
