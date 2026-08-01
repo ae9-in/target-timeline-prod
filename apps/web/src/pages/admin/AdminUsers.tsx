@@ -116,7 +116,7 @@ export const AdminUsers: React.FC = () => {
     setActionLoading(`${userId}:approve-signup`);
     setOpenMenu(null);
     try {
-      const user = pendingSignups.find((u) => u.id === userId);
+      const user = pendingSignups.find((u) => u.id === userId) || users.find((u) => u.id === userId);
       const role = approveRole[userId] || user?.roles[0]?.name || 'VIEWER';
       await api.post(`/admin/users/${userId}/approve-signup`, { role });
       await Promise.all([fetchPending(), fetchUsers()]);
