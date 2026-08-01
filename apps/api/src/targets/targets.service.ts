@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateTargetDto, UpdateTargetDto } from './dto/create-target.dto';
 import { calculateRagStatus } from './rag.util';
@@ -87,6 +87,30 @@ export class TargetsService {
   }
 
   async create(dto: CreateTargetDto, userId: string, ip: string) {
+    if (new Date(dto.deadline) <= new Date(dto.startDate)) {
+      throw new BadRequestException('Deadline must be after start date');
+    }
+
+    if (dto.direction === 'up' && dto.targetValue <= dto.baseline) {
+      throw new BadRequestException('Target value must be greater than baseline value for upward targets');
+    }
+    if (dto.direction === 'down' && dto.targetValue >= dto.baseline) {
+      throw new BadRequestException('Target value must be less than baseline value for downward targets');
+    }
+
+    const targetDiff = dto.direction === 'up' ? dto.targetValue - dto.baseline : dto.baseline - dto.targetValue;
+    let actualProgress = 0;
+    if (targetDiff !== 0) {
+      if (dto.direction === 'up') {
+        actualProgress = (dto.currentValue - dto.baseline) / targetDiff;
+      } else {
+        actualProgress = (dto.baseline - dto.currentValue) / targetDiff;
+      }
+    } else {
+      actualProgress = dto.currentValue === dto.targetValue ? 1 : 0;
+    }
+    const progressPct = Math.min(100, Math.max(0, actualProgress * 100));
+
     const target = await this.prisma.target.create({
       data: {
         name: dto.name,
@@ -101,7 +125,7 @@ export class TargetsService {
         direction: dto.direction,
         isMilestone: dto.isMilestone ?? false,
         wbsParentId: dto.wbsParentId || null,
-        progressPct: dto.progressPct ?? 0,
+        progressPct: progressPct,
         locationId: dto.locationId || null,
         createdBy: userId,
       },
@@ -162,6 +186,55 @@ export class TargetsService {
       }
     }
 
+    const newStartDate = dto.startDate ? new Date(dto.startDate) : targetBefore.startDate;
+    const newDeadline = dto.deadline ? new Date(dto.deadline) : targetBefore.deadline;
+    if (newDeadline <= newStartDate) {
+      throw new BadRequestException('Deadline must be after start date');
+    }
+
+    const newBaseline = dto.baseline !== undefined ? dto.baseline : targetBefore.baseline;
+    const newTargetValue = dto.targetValue !== undefined ? dto.targetValue : targetBefore.targetValue;
+    const newDirection = dto.direction ? dto.direction : targetBefore.direction;
+
+    if (newDirection === 'up' && newTargetValue <= newBaseline) {
+      throw new BadRequestException('Target value must be greater than baseline value for upward targets');
+    }
+    if (newDirection === 'down' && newTargetValue >= newBaseline) {
+      throw new BadRequestException('Target value must be less than baseline value for downward targets');
+    }
+
+    const targetDiff = newDirection === 'up' ? newTargetValue - newBaseline : newBaseline - newTargetValue;
+    
+    let finalCurrentValue = dto.currentValue !== undefined ? dto.currentValue : targetBefore.currentValue;
+    let finalProgressPct = dto.progressPct !== undefined ? dto.progressPct : targetBefore.progressPct;
+
+    if (dto.progressPct !== undefined && dto.currentValue === undefined) {
+      // Gantt/timeline update sent progressPct directly
+      finalProgressPct = dto.progressPct;
+      if (targetDiff !== 0) {
+        if (newDirection === 'up') {
+          finalCurrentValue = newBaseline + (dto.progressPct / 100) * targetDiff;
+        } else {
+          finalCurrentValue = newBaseline - (dto.progressPct / 100) * targetDiff;
+        }
+      } else {
+        finalCurrentValue = dto.progressPct >= 100 ? newTargetValue : newBaseline;
+      }
+    } else if (dto.currentValue !== undefined || dto.baseline !== undefined || dto.targetValue !== undefined || dto.direction !== undefined) {
+      // Normal form edit or update sent currentValue, baseline, targetValue or direction
+      let actualProgress = 0;
+      if (targetDiff !== 0) {
+        if (newDirection === 'up') {
+          actualProgress = (finalCurrentValue - newBaseline) / targetDiff;
+        } else {
+          actualProgress = (newBaseline - finalCurrentValue) / targetDiff;
+        }
+      } else {
+        actualProgress = finalCurrentValue === newTargetValue ? 1 : 0;
+      }
+      finalProgressPct = Math.min(100, Math.max(0, actualProgress * 100));
+    }
+
     // Update target
     const targetAfter = await this.prisma.target.update({
       where: { id },
@@ -173,12 +246,12 @@ export class TargetsService {
         ...(dto.deadline && { deadline: new Date(dto.deadline) }),
         ...(dto.baseline !== undefined && { baseline: dto.baseline }),
         ...(dto.targetValue !== undefined && { targetValue: dto.targetValue }),
-        ...(dto.currentValue !== undefined && { currentValue: dto.currentValue }),
+        currentValue: finalCurrentValue,
         ...(dto.unit && { unit: dto.unit }),
         ...(dto.direction && { direction: dto.direction }),
         ...(dto.isMilestone !== undefined && { isMilestone: dto.isMilestone }),
         ...(dto.wbsParentId !== undefined && { wbsParentId: dto.wbsParentId }),
-        ...(dto.progressPct !== undefined && { progressPct: dto.progressPct }),
+        progressPct: finalProgressPct,
         ...(dto.locationId !== undefined && { locationId: dto.locationId || null }),
       },
     });

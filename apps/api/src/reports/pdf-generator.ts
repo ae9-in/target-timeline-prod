@@ -201,6 +201,145 @@ export function generatePdfReport(data: ReportData, outputPath: string): Promise
         });
       }
 
+      // ─── 5. Comparative Analysis Section ───────────────────────────────
+      // Add Comparative Analysis Page
+      doc.addPage();
+      currentY = 40;
+      
+      // Page header
+      doc.rect(40, currentY, 515, 36).fill('#0f111a');
+      doc.fillColor('#ffffff')
+         .fontSize(11)
+         .font('Helvetica-Bold')
+         .text('APPENDIX: TESTING OBSERVATIONS & GAP ANALYSIS', 55, currentY + 13);
+      currentY += 50;
+
+      doc.fillColor('#4b5563')
+         .fontSize(8.5)
+         .font('Helvetica-Oblique')
+         .text('Comparative audit of the Target Timeline application against industry standard ERP/CRM platforms (Zoho, Jira, Monday, Odoo, Dynamics 365), detailing observed bugs/limitations and recommended resolutions.', 40, currentY, { width: 515, lineGap: 2 });
+      currentY += 35;
+
+      const drawComparisonTableHeader = () => {
+        doc.rect(40, currentY, 515, 20).fill('#f3f4f6');
+        doc.fillColor('#374151').fontSize(8).font('Helvetica-Bold');
+        doc.text('Feature', 45, currentY + 6, { width: 85 });
+        doc.text('Target Timeline (Current)', 135, currentY + 6, { width: 135 });
+        doc.text('Standard ERP/CRM Systems', 275, currentY + 6, { width: 140 });
+        doc.text('Recommendation', 420, currentY + 6, { width: 135 });
+        
+        doc.moveTo(40, currentY + 20).lineTo(555, currentY + 20).strokeColor('#d1d5db').lineWidth(1).stroke();
+        currentY += 20;
+      };
+
+      drawComparisonTableHeader();
+
+      const comparisonRows = [
+        {
+          feature: 'User Role Management',
+          current: 'Viewer permissions are unclear (Viewer can access Department module)',
+          standard: 'Strict Role-Based Access Control (RBAC) with Admin, Manager, Viewer permissions',
+          recommendation: 'Restrict viewer access based on assigned roles.'
+        },
+        {
+          feature: 'Data Validation',
+          current: 'Code field accepts 4 characters though specification says 3',
+          standard: 'Strong input validation with mandatory format checks',
+          recommendation: 'Implement frontend and backend validation.'
+        },
+        {
+          feature: 'Export Function',
+          current: 'Export functionality not working',
+          standard: 'Export to Excel/PDF/CSV available in most systems',
+          recommendation: 'Fix export module and provide multiple export formats.'
+        },
+        {
+          feature: 'Dropdown Selection',
+          current: 'Location dropdown cannot be selected after updating',
+          standard: 'Auto-refresh and dynamic dropdown loading',
+          recommendation: 'Refresh dropdown after update without page reload.'
+        },
+        {
+          feature: 'Dashboard Metrics',
+          current: 'Baseline value does not update correctly',
+          standard: 'Real-time dashboard calculations',
+          recommendation: 'Refresh KPIs immediately after data changes.'
+        },
+        {
+          feature: 'Alert Management',
+          current: 'Resolved targets still appear in Alerts and Risk Log',
+          standard: 'Alerts automatically disappear after resolution',
+          recommendation: 'Synchronize alert status with task status.'
+        },
+        {
+          feature: 'User Experience',
+          current: 'Some modules require multiple refreshes',
+          standard: 'Smooth navigation with instant UI updates',
+          recommendation: 'Improve frontend state management and responsiveness.'
+        },
+        {
+          feature: 'Error Handling',
+          current: 'Limited validation and user feedback',
+          standard: 'Clear error messages and success notifications',
+          recommendation: 'Display meaningful validation and confirmation messages.'
+        },
+        {
+          feature: 'Search & Filters',
+          current: 'Basic filtering',
+          standard: 'Advanced filters, global search, sorting, saved filters',
+          recommendation: 'Add multi-filter and search functionality.'
+        },
+        {
+          feature: 'Audit Trail',
+          current: 'Limited visibility',
+          standard: 'Complete activity history and change logs',
+          recommendation: 'Maintain logs for updates, deletions, and user actions.'
+        },
+        {
+          feature: 'Performance',
+          current: 'Minor UI delays during updates',
+          standard: 'Optimized loading with caching and lazy loading',
+          recommendation: 'Optimize API response time and frontend rendering.'
+        }
+      ];
+
+      comparisonRows.forEach((item, index) => {
+        doc.font('Helvetica-Bold').fontSize(8);
+        const fHeight = doc.heightOfString(item.feature, { width: 85 });
+        
+        doc.font('Helvetica').fontSize(8);
+        const cHeight = doc.heightOfString(item.current, { width: 135 });
+        const sHeight = doc.heightOfString(item.standard, { width: 140 });
+        
+        doc.font('Helvetica-Bold').fontSize(8);
+        const rHeight = doc.heightOfString(item.recommendation, { width: 135 });
+
+        const contentHeight = Math.max(fHeight, cHeight, sHeight, rHeight);
+        const rowHeight = contentHeight + 14;
+
+        checkPageBreak(rowHeight, () => {
+          drawComparisonTableHeader();
+        });
+
+        if (index % 2 === 1) {
+          doc.rect(40, currentY, 515, rowHeight).fill('#fafafa');
+        }
+
+        doc.moveTo(40, currentY + rowHeight).lineTo(555, currentY + rowHeight).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+
+        doc.fillColor('#1f2937').font('Helvetica-Bold').fontSize(8);
+        doc.text(item.feature, 45, currentY + 7, { width: 85 });
+
+        doc.fillColor('#4b5563').font('Helvetica').fontSize(8);
+        doc.text(item.current, 135, currentY + 7, { width: 135 });
+        doc.text(item.standard, 275, currentY + 7, { width: 140 });
+
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(8);
+        doc.text(item.recommendation, 420, currentY + 7, { width: 135 });
+
+        currentY += rowHeight;
+      });
+
       doc.end();
 
       stream.on('finish', () => resolve());

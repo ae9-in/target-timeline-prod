@@ -40,7 +40,43 @@ async function bootstrap() {
   return cachedServer;
 }
 
+function killProcessOnPort(port: number) {
+  try {
+    const { execSync } = require('child_process');
+    const currentPid = process.pid;
+    if (process.platform === 'win32') {
+      const output = execSync(`netstat -ano | findstr :${port}`, { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
+      const lines = output.split('\n');
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 5 && parts[1].endsWith(`:${port}`)) {
+          const pid = parts[parts.length - 1];
+          if (pid && pid !== '0' && pid !== currentPid.toString()) {
+            console.log(`[Port Cleanup] Killing process ${pid} using port ${port}...`);
+            execSync(`taskkill /F /PID ${pid}`, { stdio: 'ignore' });
+          }
+        }
+      }
+    } else {
+      const output = execSync(`lsof -t -i:${port}`, { stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim();
+      if (output) {
+        const pids = output.split('\n');
+        for (const pid of pids) {
+          if (pid && pid !== currentPid.toString()) {
+            console.log(`[Port Cleanup] Killing process ${pid} using port ${port}...`);
+            execSync(`kill -9 ${pid}`, { stdio: 'ignore' });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Fail silently
+  }
+}
+
 if (!process.env.VERCEL) {
+  killProcessOnPort(3000);
+
   bootstrap()
     .then(async (server) => {
       const port = process.env.PORT ?? 3000;

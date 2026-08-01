@@ -4,7 +4,7 @@ import type { Department } from '../context/DepartmentContext';
 import { useLocations } from '../context/LocationContext';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Building2, Plus, Edit2, Trash2, Search, X, Check, User, MapPin
+  Building2, Plus, Edit2, Trash2, Search, X, Check, User, MapPin, Lock
 } from 'lucide-react';
 
 const PRESET_COLORS = [
@@ -157,7 +157,7 @@ export const DepartmentManagement: React.FC = () => {
           </p>
         </div>
 
-        {isSuperAdmin && (
+        {isSuperAdmin ? (
           <button
             type="button"
             onClick={openCreateModal}
@@ -180,6 +180,22 @@ export const DepartmentManagement: React.FC = () => {
             <Plus size={18} />
             <span>Add Department</span>
           </button>
+        ) : (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(245, 158, 11, 0.1)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            color: '#fbbf24',
+            fontSize: '13px',
+            fontWeight: 500
+          }}>
+            <Lock size={14} />
+            <span>Read-Only View</span>
+          </div>
         )}
       </div>
 

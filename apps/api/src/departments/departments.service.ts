@@ -7,15 +7,26 @@ export class DepartmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.department.findMany({
+    const depts = await this.prisma.department.findMany({
       orderBy: { createdAt: 'asc' },
+      include: { location: true },
     });
+    return depts.map((d) => ({
+      ...d,
+      locationName: d.location?.name || undefined,
+    }));
   }
 
   async findOne(id: string) {
-    const dept = await this.prisma.department.findUnique({ where: { id } });
+    const dept = await this.prisma.department.findUnique({
+      where: { id },
+      include: { location: true },
+    });
     if (!dept) throw new NotFoundException('Department not found');
-    return dept;
+    return {
+      ...dept,
+      locationName: dept.location?.name || undefined,
+    };
   }
 
   async create(dto: CreateDepartmentDto) {
@@ -27,15 +38,13 @@ export class DepartmentsService {
       throw new BadRequestException('A department with this name already exists');
     }
 
-    // If location is provided, verify it exists and fetch name
-    let locationName: string | undefined;
+    // If location is provided, verify it exists
     if (dto.locationId) {
       const loc = await this.prisma.location.findUnique({ where: { id: dto.locationId } });
       if (!loc) throw new BadRequestException('Assigned location not found');
-      locationName = loc.name;
     }
 
-    return this.prisma.department.create({
+    const dept = await this.prisma.department.create({
       data: {
         name: dto.name,
         code: dto.code.toUpperCase(),
@@ -44,13 +53,20 @@ export class DepartmentsService {
         description: dto.description,
         locationId: dto.locationId,
       },
+      include: { location: true },
     });
+
+    return {
+      ...dept,
+      locationName: dept.location?.name || undefined,
+    };
   }
 
   async update(id: string, dto: UpdateDepartmentDto) {
-    const dept = await this.findOne(id);
+    const deptBefore = await this.prisma.department.findUnique({ where: { id } });
+    if (!deptBefore) throw new NotFoundException('Department not found');
 
-    if (dto.name && dto.name !== dept.name) {
+    if (dto.name && dto.name !== deptBefore.name) {
       const existing = await this.prisma.department.findUnique({
         where: { name: dto.name },
       });
@@ -64,7 +80,7 @@ export class DepartmentsService {
       if (!loc) throw new BadRequestException('Assigned location not found');
     }
 
-    return this.prisma.department.update({
+    const dept = await this.prisma.department.update({
       where: { id },
       data: {
         name: dto.name,
@@ -74,7 +90,13 @@ export class DepartmentsService {
         description: dto.description,
         locationId: dto.locationId,
       },
+      include: { location: true },
     });
+
+    return {
+      ...dept,
+      locationName: dept.location?.name || undefined,
+    };
   }
 
   async delete(id: string) {

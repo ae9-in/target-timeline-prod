@@ -99,11 +99,15 @@ async function main() {
     { roleId: roles.VIEWER.id, resource: 'department_performance', action: 'read', scope: null },
     { roleId: roles.VIEWER.id, resource: 'analytics', action: 'read', scope: null },
     { roleId: roles.VIEWER.id, resource: 'alert', action: 'read', scope: null },
-    { roleId: roles.VIEWER.id, resource: 'alert', action: 'update', scope: null },
     { roleId: roles.VIEWER.id, resource: 'target', action: 'read', scope: null },
-    { roleId: roles.VIEWER.id, resource: 'target', action: 'create', scope: null },
-    { roleId: roles.VIEWER.id, resource: 'target', action: 'update', scope: null },
-    { roleId: roles.VIEWER.id, resource: 'target', action: 'delete', scope: null },
+
+    // Department permissions for all roles (excluding SUPER_ADMIN which has global wildcard)
+    { roleId: roles.LEADERSHIP.id, resource: 'department', action: 'read', scope: null },
+    { roleId: roles.SALES_MANAGER.id, resource: 'department', action: 'read', scope: null },
+    { roleId: roles.PRODUCTION_MANAGER.id, resource: 'department', action: 'read', scope: null },
+    { roleId: roles.HR_MANAGER.id, resource: 'department', action: 'read', scope: null },
+    { roleId: roles.PLANNING_ANALYST.id, resource: 'department', action: 'read', scope: null },
+    { roleId: roles.VIEWER.id, resource: 'department', action: 'read', scope: null },
   ];
 
   await prisma.permission.deleteMany({});

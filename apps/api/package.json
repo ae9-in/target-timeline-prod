@@ -99,7 +99,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "nodemonConfig": {
-    "exec": "ts-node -r tsconfig-paths/register src/main.ts",
+    "exec": "ts-node --transpile-only -r tsconfig-paths/register src/main.ts",
     "ext": "ts",
     "watch": [
       "src"

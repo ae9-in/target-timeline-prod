@@ -13,8 +13,11 @@ import {
   Ip,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
-import { Request } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+import { generatePdfReport } from '../reports/pdf-generator';
 import { TargetsService } from './targets.service';
 import { GanttService } from './gantt.service';
 import { CreateTargetDto, UpdateTargetDto } from './dto/create-target.dto';
@@ -80,6 +83,85 @@ export class TargetsController {
   ) {
     const userVerticals = req.user.verticalScope || [];
     return this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId });
+  }
+
+  @Get('export/pdf')
+  @RequirePermission('target', 'read')
+  async exportPdf(
+    @Query('vertical') vertical: string,
+    @Query('owner') owner: string,
+    @Query('status') status: string,
+    @Query('locationId') locationId: string,
+    @Req() req: any,
+    @Res() res: any,
+  ) {
+    const userVerticals = req.user.verticalScope || [];
+    const targets = await this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId });
+    
+    const counts = targets.reduce(
+      (acc, t) => {
+        const s = t.ragStatus?.toUpperCase();
+        if (s === 'GREEN') acc.GREEN++;
+        else if (s === 'AMBER') acc.AMBER++;
+        else if (s === 'RED') acc.RED++;
+        return acc;
+      },
+      { GREEN: 0, AMBER: 0, RED: 0 }
+    );
+
+    const verticalBreakdown: Record<string, { GREEN: number; AMBER: number; RED: number }> = {};
+    for (const t of targets) {
+      const v = t.vertical || 'Unassigned';
+      if (!verticalBreakdown[v]) {
+        verticalBreakdown[v] = { GREEN: 0, AMBER: 0, RED: 0 };
+      }
+      const s = t.ragStatus?.toUpperCase();
+      if (s === 'GREEN') verticalBreakdown[v].GREEN++;
+      else if (s === 'AMBER') verticalBreakdown[v].AMBER++;
+      else if (s === 'RED') verticalBreakdown[v].RED++;
+    }
+
+    const pdfTargets = targets.map(t => ({
+      name: t.name,
+      vertical: t.vertical,
+      owner: t.owner,
+      currentValue: t.currentValue,
+      targetValue: t.targetValue,
+      unit: t.unit,
+      ragStatus: t.ragStatus,
+      progress: Math.round(t.actualProgress * 100),
+    }));
+
+    const tempDir = path.join(process.cwd(), 'tmp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const tempPath = path.join(tempDir, `export_${Date.now()}.pdf`);
+
+    try {
+      await generatePdfReport({
+        generatedAt: new Date(),
+        counts,
+        verticalBreakdown,
+        targets: pdfTargets,
+      }, tempPath);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=targets_export.pdf');
+
+      const fileStream = fs.createReadStream(tempPath);
+      fileStream.pipe(res);
+      fileStream.on('end', () => {
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+      });
+    } catch (err) {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+      throw err;
+    }
   }
 
   @Get(':id')

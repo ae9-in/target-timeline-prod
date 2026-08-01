@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLocations } from '../context/LocationContext';
+import { useDepartments } from '../context/DepartmentContext';
 import type { Location } from '../context/LocationContext';
 import { MapPin, Plus, Edit2, ToggleLeft, ToggleRight, X, Check, Target, Clock } from 'lucide-react';
 
@@ -25,6 +26,7 @@ const LABEL_STYLE: React.CSSProperties = {
 
 export const LocationManagement: React.FC = () => {
   const { allLocations, loading, createLocation, updateLocation, setLocationStatus } = useLocations();
+  const { refreshDepartments } = useDepartments();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
@@ -72,6 +74,7 @@ export const LocationManagement: React.FC = () => {
         });
       }
       setIsModalOpen(false);
+      await refreshDepartments();
     } catch (err: any) {
       const msg = err?.response?.data?.message;
       setError(Array.isArray(msg) ? msg.join('; ') : (msg || 'Failed to save location'));
@@ -84,6 +87,7 @@ export const LocationManagement: React.FC = () => {
     const newStatus = loc.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
       await setLocationStatus(loc.id, newStatus);
+      await refreshDepartments();
     } catch (err) {
       console.error('Failed to toggle location status:', err);
     }

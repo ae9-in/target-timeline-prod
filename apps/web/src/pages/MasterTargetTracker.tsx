@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useDepartments } from '../context/DepartmentContext';
+import { useLocations } from '../context/LocationContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -8,12 +9,14 @@ import {
   Trash2, 
   X, 
   Eye, 
-  HelpCircle 
+  HelpCircle,
+  Download
 } from 'lucide-react';
 
 export const MasterTargetTracker: React.FC = () => {
   const { api, user } = useAuth();
   const { departments } = useDepartments();
+  const { locations } = useLocations();
   const navigate = useNavigate();
   
   const [targets, setTargets] = useState<any[]>([]);
@@ -23,6 +26,7 @@ export const MasterTargetTracker: React.FC = () => {
   const [filterVertical, setFilterVertical] = useState('');
   const [filterOwner, setFilterOwner] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -40,6 +44,7 @@ export const MasterTargetTracker: React.FC = () => {
   const [formCurrentValue, setFormCurrentValue] = useState<number | string>('');
   const [formUnit, setFormUnit] = useState('');
   const [formDirection, setFormDirection] = useState<'up' | 'down'>('up');
+  const [formLocationId, setFormLocationId] = useState('');
   const [formError, setFormError] = useState('');
 
   const roles = user?.roles || [];
@@ -56,6 +61,7 @@ export const MasterTargetTracker: React.FC = () => {
       if (filterVertical) url += `vertical=${filterVertical}&`;
       if (filterOwner) url += `owner=${filterOwner}&`;
       if (filterStatus) url += `status=${filterStatus}&`;
+      if (filterLocation) url += `locationId=${filterLocation}&`;
       
       const res = await api.get(url);
       setTargets(res.data);
@@ -68,7 +74,7 @@ export const MasterTargetTracker: React.FC = () => {
 
   useEffect(() => {
     fetchTargets();
-  }, [filterVertical, filterOwner, filterStatus]);
+  }, [filterVertical, filterOwner, filterStatus, filterLocation]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,12 +91,14 @@ export const MasterTargetTracker: React.FC = () => {
         currentValue: Number(formCurrentValue),
         unit: formUnit,
         direction: formDirection,
+        locationId: formLocationId || null,
       });
       setIsCreateOpen(false);
       resetForm();
       fetchTargets();
     } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Error creating target');
+      const msg = err.response?.data?.message;
+      setFormError(Array.isArray(msg) ? msg.join('; ') : (msg || 'Error creating target'));
     }
   };
 
@@ -117,6 +125,7 @@ export const MasterTargetTracker: React.FC = () => {
         payload.currentValue = Number(formCurrentValue);
         payload.unit = formUnit;
         payload.direction = formDirection;
+        payload.locationId = formLocationId || null;
       }
 
       await api.put(`/targets/${selectedTarget.id}`, payload);
@@ -124,7 +133,8 @@ export const MasterTargetTracker: React.FC = () => {
       resetForm();
       fetchTargets();
     } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Error updating target');
+      const msg = err.response?.data?.message;
+      setFormError(Array.isArray(msg) ? msg.join('; ') : (msg || 'Error updating target'));
     }
   };
 
@@ -150,6 +160,7 @@ export const MasterTargetTracker: React.FC = () => {
     setFormCurrentValue(t.currentValue);
     setFormUnit(t.unit);
     setFormDirection(t.direction);
+    setFormLocationId(t.locationId || '');
     setIsEditOpen(true);
   };
 
@@ -164,7 +175,56 @@ export const MasterTargetTracker: React.FC = () => {
     setFormCurrentValue('');
     setFormUnit('');
     setFormDirection('up');
+    setFormLocationId('');
     setFormError('');
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Target Name', 'Vertical', 'Owner', 'Start Date', 'Deadline', 'Baseline', 'Target Value', 'Current Value', 'Unit', 'RAG Status', 'Progress%'];
+    const rows = targets.map((t) => [
+      `"${t.name.replace(/"/g, '""')}"`,
+      `"${t.vertical.replace(/"/g, '""')}"`,
+      `"${t.owner.replace(/"/g, '""')}"`,
+      new Date(t.startDate).toISOString().split('T')[0],
+      new Date(t.deadline).toISOString().split('T')[0],
+      t.baseline,
+      t.targetValue,
+      t.currentValue,
+      `"${t.unit.replace(/"/g, '""')}"`,
+      t.ragStatus,
+      Math.round(t.actualProgress * 100),
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `targets_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      let query = `?`;
+      if (filterVertical) query += `vertical=${filterVertical}&`;
+      if (filterOwner) query += `owner=${filterOwner}&`;
+      if (filterStatus) query += `status=${filterStatus}&`;
+      if (filterLocation) query += `locationId=${filterLocation}&`;
+      
+      const res = await api.get(`/targets/export/pdf${query}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `targets_report_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      alert('Failed to export PDF report');
+    }
   };
 
   return (
@@ -216,14 +276,56 @@ export const MasterTargetTracker: React.FC = () => {
               onChange={(e) => setFilterOwner(e.target.value)}
             />
           </div>
+
+          {/* Location filter */}
+          {locations.length > 0 && (
+            <div className="flex items-center gap-8">
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Location:</span>
+              <select 
+                className="form-select" 
+                style={{ width: '130px', padding: '6px 12px' }}
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+              >
+                <option value="">All</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
-        {canCreate && (
-          <button className="btn btn-primary" onClick={() => { resetForm(); setIsCreateOpen(true); }}>
-            <Plus size={16} />
-            <span>Create Target</span>
-          </button>
-        )}
+        <div className="flex items-center gap-12" style={{ flexWrap: 'wrap' }}>
+          {/* Export options */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={handleExportCSV} 
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px' }}
+              title="Export as Excel CSV"
+            >
+              <Download size={14} />
+              <span>Excel (CSV)</span>
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              onClick={handleExportPDF} 
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 12px' }}
+              title="Export as PDF Report"
+            >
+              <Download size={14} />
+              <span>PDF Report</span>
+            </button>
+          </div>
+
+          {canCreate && (
+            <button className="btn btn-primary" onClick={() => { resetForm(); setIsCreateOpen(true); }}>
+              <Plus size={16} />
+              <span>Create Target</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Targets Table */}
@@ -369,6 +471,16 @@ export const MasterTargetTracker: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="form-group">
+                  <label className="form-label">Location</label>
+                  <select className="form-select" value={formLocationId} onChange={e => setFormLocationId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Start Date</label>
@@ -456,6 +568,16 @@ export const MasterTargetTracker: React.FC = () => {
                     <label className="form-label">Owner</label>
                     <input type="text" className="form-input" required value={formOwner} onChange={e => setFormOwner(e.target.value)} />
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Location</label>
+                  <select className="form-select" disabled={isPlanner && !isManager} value={formLocationId} onChange={e => setFormLocationId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-row">

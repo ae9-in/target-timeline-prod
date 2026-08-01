@@ -1364,7 +1364,7 @@ export const Timeline: React.FC = () => {
 
   const handleExportCSV = () => {
     const csv = targetsToCSV(filteredTargets);
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.download = `timeline-targets-${new Date().toISOString().split('T')[0]}.csv`;
