@@ -273,8 +273,8 @@ export class GanttService {
       throw new ForbiddenException('Access to this target vertical is restricted');
     }
 
-    // PLANNING_ANALYST can update schedules; others need manager-level role
-    const allowedRoles = ['SUPER_ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'];
+    // PLANNING_ANALYST can update schedules; ADMIN and manager-level roles can too
+    const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'];
     const hasPermission = roles.some((r) => allowedRoles.includes(r));
     if (!hasPermission) {
       throw new ForbiddenException('You do not have permission to reschedule targets');

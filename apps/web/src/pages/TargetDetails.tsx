@@ -275,8 +275,8 @@ export const TargetDetails: React.FC = () => {
           {auditLogs.length > 0 ? (
             auditLogs.map((log) => (
               <div key={log.id} className="audit-item" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '16px' }}>
-                <div className="audit-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  <span style={{ fontWeight: 600, color: '#f3f4f6' }}>{log.after?.actorName || 'System'}</span>
+                 <div className="audit-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                  <span style={{ fontWeight: 600, color: '#f3f4f6' }}>{log.after?.actorName || log.before?.actorName || 'System'}</span>
                   <span>•</span>
                   <span>{new Date(log.createdAt).toLocaleString()}</span>
                   <span>•</span>
@@ -289,11 +289,31 @@ export const TargetDetails: React.FC = () => {
                       (Value changed from {log.before?.currentValue ?? 0} to {log.after?.currentValue ?? 0} {target.unit})
                     </span>
                   )}
-                  {log.action === 'SCHEDULE_CHANGE' && (
-                    <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>
-                      (Timeline rescheduled or progress changed to {Math.round(log.after?.progressPct ?? 0)}%)
-                    </span>
-                  )}
+                  {log.action === 'SCHEDULE_CHANGE' && (() => {
+                    const beforeStart = log.before?.startDate ? new Date(log.before.startDate).toLocaleDateString() : null;
+                    const afterStart = log.after?.startDate ? new Date(log.after.startDate).toLocaleDateString() : null;
+                    const beforeEnd = log.before?.deadline ? new Date(log.before.deadline).toLocaleDateString() : null;
+                    const afterEnd = log.after?.deadline ? new Date(log.after.deadline).toLocaleDateString() : null;
+                    const datesChanged = beforeStart !== afterStart || beforeEnd !== afterEnd;
+                    const progressChanged = log.before?.progressPct !== log.after?.progressPct;
+                    return (
+                      <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>
+                        {datesChanged && (
+                          <span>
+                            Timeline dragged: {beforeStart} → {afterStart} &nbsp;|&nbsp; Deadline: {beforeEnd} → {afterEnd}
+                          </span>
+                        )}
+                        {progressChanged && (
+                          <span style={{ marginLeft: datesChanged ? '8px' : '0' }}>
+                            {datesChanged ? '· ' : ''}Progress: {Math.round(log.before?.progressPct ?? 0)}% → {Math.round(log.after?.progressPct ?? 0)}%
+                          </span>
+                        )}
+                        {!datesChanged && !progressChanged && (
+                          <span>Schedule updated</span>
+                        )}
+                      </span>
+                    );
+                  })()}
                 </div>
                 {log.after?.note && (
                   <div style={{ marginTop: '8px', padding: '8px 12px', background: 'rgba(59, 130, 246, 0.03)', borderLeft: '3px solid #3b82f6', borderRadius: '4px', fontStyle: 'italic', color: '#9ca3af', fontSize: '12px', lineHeight: '1.4' }}>

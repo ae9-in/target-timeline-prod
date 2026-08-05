@@ -48,7 +48,7 @@ export const Analytics: React.FC = () => {
   const redCount = scopedTargets.filter(t => t.ragStatus === 'RED').length;
   const totalCount = scopedTargets.length;
   const totalCompletion = scopedTargets.reduce((sum, t) => sum + (t.actualProgress || 0), 0);
-  const avgCompletion = totalCount > 0 ? Math.round((totalCompletion / totalCount) * 100) : 0;
+  const avgCompletion = totalCount > 0 ? Math.min(100, Math.round((totalCompletion / totalCount) * 100)) : 0;
 
   // RAG Pie
   const ragShareOption = {
@@ -245,7 +245,7 @@ export const Analytics: React.FC = () => {
                   const dAmber = dTargets.filter(t => t.ragStatus === 'AMBER').length;
                   const dRed = dTargets.filter(t => t.ragStatus === 'RED').length;
                   const dTotal = dTargets.length;
-                  const dProg = dTotal > 0 ? Math.round(dTargets.reduce((s, t) => s + (t.actualProgress || 0), 0) / dTotal * 100) : 0;
+                  const dProg = dTotal > 0 ? Math.min(100, Math.round(dTargets.reduce((s, t) => s + (t.actualProgress || 0), 0) / dTotal * 100)) : 0;
                   return (
                     <div key={dept.id} style={{
                       background: '#0f1019', border: '1px solid rgba(255,255,255,0.08)',

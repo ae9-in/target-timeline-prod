@@ -86,3 +86,23 @@ tmp/
 # Local environment overrides
 .env.*.local
 .env.local
+
+# Vite cache
+apps/web/.vite/
+**/.vite/
+
+# Prisma generated client (root level)
+apps/api/src/generated/
+
+# Package manager lock files (keep one, ignore others)
+# Uncomment the ones you don't use:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# macOS extended attributes
+.AppleDouble
+.LSOverride
+
+# Windows shortcuts
+*.lnk

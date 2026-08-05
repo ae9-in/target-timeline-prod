@@ -98,7 +98,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ portal = 'user' }) => {
                 : 'This typically takes up to 24 hours. You can try logging in after approval.'}
             </span>
           </div>
-          <Link to={isAdmin ? '/admin/login' : '/login'} className={`btn ${isAdmin ? 'btn-admin' : 'btn-primary'} w-full`} style={{ padding: '12px', justifyContent: 'center' }}>
+          <Link to="/login" className={`btn ${isAdmin ? 'btn-admin' : 'btn-primary'} w-full`} style={{ padding: '12px', justifyContent: 'center' }}>
             Back to Sign In
           </Link>
         </div>
@@ -302,7 +302,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ portal = 'user' }) => {
 
         <div className="login-portal-switch" style={{ textAlign: 'center', marginTop: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>
           Already have access?{' '}
-          <Link to={isAdmin ? '/admin/login' : '/login'} style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+          <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
             Sign in →
           </Link>
         </div>
