@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactECharts from 'echarts-for-react';
-import { ArrowLeft, Clock, User, Briefcase, Activity, Edit3, X, Sliders } from 'lucide-react';
+import { ArrowLeft, Clock, User, Briefcase, Activity, Edit3, X, Sliders, Layers } from 'lucide-react';
 
 export const TargetDetails: React.FC = () => {
   const { api } = useAuth();
@@ -181,6 +181,14 @@ export const TargetDetails: React.FC = () => {
               <span style={{ color: 'var(--text-secondary)', width: '100px' }}>Department:</span>
               <strong style={{ color: 'var(--text-primary)' }}>{target.vertical}</strong>
             </div>
+
+            {target.subDepartment && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px' }}>
+                <Layers size={16} style={{ color: 'var(--color-primary)' }} />
+                <span style={{ color: 'var(--text-secondary)', width: '100px' }}>Sub-Dept:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{target.subDepartment.name}</strong>
+              </div>
+            )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px' }}>
               <User size={16} style={{ color: 'var(--color-primary)' }} />

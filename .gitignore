@@ -75,6 +75,8 @@ apps/api/prisma/grant-*.ts
 apps/api/prisma/reset-*.ts
 apps/api/prisma/test-*.ts
 apps/api/prisma/verify-*.ts
+apps/api/prisma/restore_data.ts
+apps/api/prisma/remove_dummy_data.ts
 
 # Agent Customizations
 .agents/

@@ -3,15 +3,24 @@ import { useAuth } from '../context/AuthContext';
 import { useLocations } from '../context/LocationContext';
 import { useDepartments } from '../context/DepartmentContext';
 import ReactECharts from 'echarts-for-react';
-import { MapPin, BarChart3 } from 'lucide-react';
+import { MapPin, BarChart3, ChevronDown, ChevronRight, User, Layers, Folder, Building2, Target } from 'lucide-react';
 
 export const Analytics: React.FC = () => {
   const { api } = useAuth();
   const { locations, loading: locLoading } = useLocations();
-  const { departments } = useDepartments();
+  const { departments, subDepartments } = useDepartments();
   const [targets, setTargets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
+
+  // Tree expansion state
+  const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({});
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
+  const [expandedSubs, setExpandedSubs] = useState<Record<string, boolean>>({});
+
+  const toggleLoc = (id: string) => setExpandedLocs(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleDept = (id: string) => setExpandedDepts(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleSub = (id: string) => setExpandedSubs(prev => ({ ...prev, [id]: !prev[id] }));
 
   useEffect(() => {
     const fetchTargets = async () => {
@@ -277,6 +286,225 @@ export const Analytics: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* ── Section 2: Hierarchical Drill-Down Explorer ── */}
+      <div className="glass-card" style={{ marginTop: '24px', padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '20px' }}>
+          <Layers size={18} style={{ color: '#60a5fa' }} />
+          <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Hierarchical Drill-Down Target Explorer</h2>
+        </div>
+
+        <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+          Click headers to drill down: <strong>Location → Department → Sub-Department → Target Owner (Employee) → Specific Targets</strong>
+        </p>
+
+        {/* Tree Container */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {(selectedLocationId === 'all' ? locations : locations.filter(l => l.id === selectedLocationId)).map((loc) => {
+            const locDepts = departments.filter(d => d.locationId === loc.id);
+            const locTargets = targets.filter(t => t.locationId === loc.id);
+            const isLocExpanded = !!expandedLocs[loc.id];
+
+            return (
+              <div key={loc.id} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                {/* Location Node */}
+                <div 
+                  onClick={() => toggleLoc(loc.id)}
+                  style={{
+                    padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    cursor: 'pointer', background: 'rgba(255,255,255,0.02)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {isLocExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    <MapPin size={14} style={{ color: '#ef4444' }} />
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{loc.name}</span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px' }}>
+                    {locDepts.length} Depts · {locTargets.length} Targets
+                  </span>
+                </div>
+
+                {/* Scoped Departments inside Location */}
+                {isLocExpanded && (
+                  <div style={{ padding: '8px 16px 16px 24px', borderLeft: '1px dashed rgba(255,255,255,0.1)', marginLeft: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {locDepts.length === 0 ? (
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '4px' }}>No departments under this location.</div>
+                    ) : (
+                      locDepts.map((dept) => {
+                        const deptKey = `${loc.id}-${dept.id}`;
+                        const isDeptExpanded = !!expandedDepts[deptKey];
+                        const deptSubs = subDepartments.filter(s => s.departmentId === dept.id);
+                        const deptTargets = locTargets.filter(t => t.vertical === dept.name);
+
+                        return (
+                          <div key={dept.id} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                            {/* Department Node */}
+                            <div 
+                              onClick={() => toggleDept(deptKey)}
+                              style={{
+                                padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                cursor: 'pointer', borderLeft: `3px solid ${dept.color || '#3b82f6'}`
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {isDeptExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                <Building2 size={13} style={{ color: dept.color }} />
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#e5e7eb' }}>{dept.name}</span>
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                {deptSubs.length} Sub-Depts · {deptTargets.length} Targets
+                              </span>
+                            </div>
+
+                            {/* Sub-Departments + Employee Breakdown inside Department */}
+                            {isDeptExpanded && (
+                              <div style={{ padding: '8px 12px 12px 20px', borderLeft: '1px dashed rgba(255,255,255,0.08)', marginLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                
+                                {/* 1. Sub-Departments iteration */}
+                                {deptSubs.map((sub) => {
+                                  const subKey = `${deptKey}-${sub.id}`;
+                                  const isSubExpanded = !!expandedSubs[subKey];
+                                  const subTargets = deptTargets.filter(t => t.subDepartmentId === sub.id);
+                                  const subOwners = Array.from(new Set(subTargets.map(t => t.owner)));
+
+                                  return (
+                                    <div key={sub.id} style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                                      {/* Sub-Department Node */}
+                                      <div 
+                                        onClick={() => toggleSub(subKey)}
+                                        style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          {isSubExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                          <Folder size={12} style={{ color: '#10b981' }} />
+                                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>{sub.name}</span>
+                                          {sub.category && <span style={{ fontSize: '9px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '1px 4px', borderRadius: '3px' }}>{sub.category}</span>}
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                          {subOwners.length} Owners · {subTargets.length} Targets
+                                        </span>
+                                      </div>
+
+                                      {/* Employee / Owner Node under Sub-Dept */}
+                                      {isSubExpanded && (
+                                        <div style={{ padding: '6px 12px 10px 18px', borderLeft: '1px dashed rgba(255,255,255,0.05)', marginLeft: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                          {subOwners.length === 0 ? (
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>No active targets in this sub-department.</div>
+                                          ) : (
+                                            subOwners.map((owner) => {
+                                              const ownerTargets = subTargets.filter(t => t.owner === owner);
+                                              return (
+                                                <div key={owner} style={{ background: 'rgba(255,255,255,0.01)', padding: '8px', borderRadius: '6px' }}>
+                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#93c5fd', marginBottom: '6px' }}>
+                                                    <User size={11} />
+                                                    <span>{owner}</span>
+                                                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 'normal' }}>({ownerTargets.length} targets)</span>
+                                                  </div>
+
+                                                  {/* Specific Targets owned by Employee under Sub-Dept */}
+                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginLeft: '12px' }}>
+                                                    {ownerTargets.map(t => (
+                                                      <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '4px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                          <Target size={10} style={{ color: 'var(--text-muted)' }} />
+                                                          <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{t.name}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                          <span style={{ color: 'var(--text-secondary)' }}>Progress: <strong>{Math.round(t.actualProgress * 100)}%</strong></span>
+                                                          <span className={`badge ${t.ragStatus.toLowerCase()}`} style={{ fontSize: '9px', padding: '1px 5px' }}>{t.ragStatus}</span>
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+
+                                {/* 2. Direct Department Targets (No Sub-Dept Category) */}
+                                {deptTargets.filter(t => !t.subDepartmentId).length > 0 && (() => {
+                                  const directTargets = deptTargets.filter(t => !t.subDepartmentId);
+                                  const directOwners = Array.from(new Set(directTargets.map(t => t.owner)));
+                                  const directKey = `${deptKey}-direct`;
+                                  const isDirectExpanded = !!expandedSubs[directKey];
+
+                                  return (
+                                    <div style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                                      <div 
+                                        onClick={() => toggleSub(directKey)}
+                                        style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          {isDirectExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                          <Folder size={12} style={{ color: 'rgba(255,255,255,0.3)' }} />
+                                          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', fontStyle: 'italic' }}>Direct Dept Targets (No Sub-Dept)</span>
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                          {directOwners.length} Owners · {directTargets.length} Targets
+                                        </span>
+                                      </div>
+
+                                      {isDirectExpanded && (
+                                        <div style={{ padding: '6px 12px 10px 18px', borderLeft: '1px dashed rgba(255,255,255,0.05)', marginLeft: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                          {directOwners.map((owner) => {
+                                            const ownerTargets = directTargets.filter(t => t.owner === owner);
+                                            return (
+                                              <div key={owner} style={{ background: 'rgba(255,255,255,0.01)', padding: '8px', borderRadius: '6px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#93c5fd', marginBottom: '6px' }}>
+                                                  <User size={11} />
+                                                  <span>{owner}</span>
+                                                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 'normal' }}>({ownerTargets.length} targets)</span>
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginLeft: '12px' }}>
+                                                  {ownerTargets.map(t => (
+                                                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '4px' }}>
+                                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <Target size={10} style={{ color: 'var(--text-muted)' }} />
+                                                        <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{t.name}</span>
+                                                      </div>
+                                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>Progress: <strong>{Math.round(t.actualProgress * 100)}%</strong></span>
+                                                        <span className={`badge ${t.ragStatus.toLowerCase()}`} style={{ fontSize: '9px', padding: '1px 5px' }}>{t.ragStatus}</span>
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                                
+                                {deptSubs.length === 0 && deptTargets.length === 0 && (
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px' }}>No targets or sub-departments configured.</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {locations.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No locations configured to view structural hierarchy.</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

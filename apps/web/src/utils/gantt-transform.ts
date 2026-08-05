@@ -4,6 +4,12 @@ export interface GanttTarget {
   id: string;
   name: string;
   vertical: string;
+  subDepartmentId?: string | null;
+  subDepartment?: {
+    id: string;
+    name: string;
+    departmentId: string;
+  } | null;
   owner: string;
   startDate: string;
   deadline: string;

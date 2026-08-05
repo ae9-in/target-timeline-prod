@@ -42,6 +42,7 @@ export class GanttService {
           take: 1,
         },
         location: { select: { id: true, name: true } },
+        subDepartment: true,
       },
       orderBy: { startDate: 'asc' },
     });

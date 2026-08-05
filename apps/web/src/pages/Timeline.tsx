@@ -38,7 +38,7 @@ interface GanttRow {
 // ─── Main Timeline Component ──────────────────────────────────────────────────
 export const Timeline: React.FC = () => {
   const { api, user } = useAuth();
-  const { departments } = useDepartments();
+  const { departments, subDepartments } = useDepartments();
   const { locations } = useLocations();
   const navigate = useNavigate();
 
@@ -121,6 +121,7 @@ export const Timeline: React.FC = () => {
   const [qcName, setQcName] = useState('');
   const [qcOwner, setQcOwner] = useState(user?.name || '');
   const [qcVertical, setQcVertical] = useState(() => departments[0]?.name || '');
+  const [qcSubDepartmentId, setQcSubDepartmentId] = useState('');
   const [qcLocationId, setQcLocationId] = useState('');
   const [qcError, setQcError] = useState<string | null>(null);
 
@@ -722,6 +723,7 @@ export const Timeline: React.FC = () => {
       setQcName('');
       setQcOwner(user?.name || '');
       setQcVertical(rowGroupId || departments[0]?.name || '');
+      setQcSubDepartmentId('');
 
       setQuickCreate({
         startDate: date1,
@@ -1019,6 +1021,7 @@ export const Timeline: React.FC = () => {
     setQcName('');
     setQcOwner(user?.name || '');
     setQcVertical(contextMenu.groupId || 'Sales');
+    setQcSubDepartmentId('');
 
     setQuickCreate({
       startDate: start,
@@ -1158,6 +1161,7 @@ export const Timeline: React.FC = () => {
       const res = await api.post('/targets', {
         name: qcName || (quickCreate.isMilestone ? 'New Milestone' : 'New Task'),
         vertical: targetVertical,
+        subDepartmentId: qcSubDepartmentId || null,
         owner: targetOwner,
         startDate: quickCreate.startDate.toISOString(),
         deadline: quickCreate.deadline.toISOString(),
@@ -1246,6 +1250,7 @@ export const Timeline: React.FC = () => {
     setQcName('');
     setQcOwner(user?.name || 'Super Admin');
     setQcVertical(rowGroupId || departments[0]?.name || 'Sales');
+    setQcSubDepartmentId('');
     setQcError(null);
 
     setQuickCreate({
@@ -2225,12 +2230,30 @@ export const Timeline: React.FC = () => {
               <label>Vertical</label>
               <select
                 value={qcVertical}
-                onChange={(e) => setQcVertical(e.target.value)}
+                onChange={(e) => {
+                  setQcVertical(e.target.value);
+                  setQcSubDepartmentId('');
+                }}
                 disabled={!!quickCreate.groupId}
               >
                 {departments.map((d) => (
                   <option key={d.id} value={d.name}>{d.name}</option>
                 ))}
+              </select>
+            </div>
+            <div className="gantt-quick-create-row">
+              <label>Sub-Dept</label>
+              <select
+                value={qcSubDepartmentId}
+                onChange={(e) => setQcSubDepartmentId(e.target.value)}
+              >
+                <option value="">None</option>
+                {subDepartments
+                  .filter(s => s.departmentId === departments.find(d => d.name === qcVertical)?.id)
+                  .map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  ))
+                }
               </select>
             </div>
             {locations.length > 0 && (
@@ -2471,7 +2494,7 @@ export const Timeline: React.FC = () => {
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Target Name</span>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>{editTargetModal.name}</div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  {editTargetModal.vertical} • {editTargetModal.owner}
+                  {editTargetModal.vertical} {editTargetModal.subDepartment?.name ? `(${editTargetModal.subDepartment.name})` : ''} • {editTargetModal.owner}
                 </div>
               </div>
 

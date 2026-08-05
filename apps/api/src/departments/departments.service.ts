@@ -100,10 +100,6 @@ export class DepartmentsService {
   }
 
   async delete(id: string) {
-    const dept = await this.findOne(id);
-    if (dept.isSystem) {
-      throw new BadRequestException('Cannot delete system departments');
-    }
     return this.prisma.department.delete({ where: { id } });
   }
 

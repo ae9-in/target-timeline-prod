@@ -55,46 +55,64 @@ model Location {
 }
 
 model Department {
-  id           String    @id @default(uuid())
-  name         String    @unique
-  code         String
-  color        String
-  lead         String    @default("Unassigned")
-  description  String?
-  isSystem     Boolean   @default(false)
-  locationId   String?
-  location     Location? @relation(fields: [locationId], references: [id])
-  createdAt    DateTime  @default(now())
+  id             String          @id @default(uuid())
+  name           String          @unique
+  code           String
+  color          String
+  lead           String          @default("Unassigned")
+  description    String?
+  isSystem       Boolean         @default(false)
+  locationId     String?
+  location       Location?       @relation(fields: [locationId], references: [id])
+  createdAt      DateTime        @default(now())
+  subDepartments SubDepartment[]
+}
+
+model SubDepartment {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  category     String?
+  fullTime     String?
+  interns      String?
+  createdAt    DateTime   @default(now())
+  targets      Target[]
+
+  @@unique([departmentId, name])
 }
 
 model Target {
-  id            String   @id @default(uuid())
-  name          String
-  vertical      String   // Sales | Production | Hiring
-  owner         String
-  startDate     DateTime
-  deadline      DateTime
-  baseline      Float
-  targetValue   Float
-  currentValue  Float
-  unit          String
-  direction     String   // "up" | "down"
-  createdBy     String
-  updatedAt     DateTime @updatedAt
+  id              String            @id @default(uuid())
+  name            String
+  vertical        String            // Sales | Production | Hiring
+  owner           String
+  startDate       DateTime
+  deadline        DateTime
+  baseline        Float
+  targetValue     Float
+  currentValue    Float
+  unit            String
+  direction       String            // "up" | "down"
+  createdBy       String
+  updatedAt       DateTime          @updatedAt
   // Location (nullable — pre-existing targets show as "Unassigned")
-  locationId    String?
-  location      Location? @relation(fields: [locationId], references: [id])
+  locationId      String?
+  location        Location?         @relation(fields: [locationId], references: [id])
+  // Sub-Department (optional)
+  subDepartmentId String?
+  subDepartment   SubDepartment?    @relation(fields: [subDepartmentId], references: [id], onDelete: SetNull)
   // Gantt extensions
-  wbsParentId   String?
-  progressPct   Float    @default(0)
-  isMilestone   Boolean  @default(false)
-  history       TargetSnapshot[]
-  alerts        Alert[]
-  dependencies  TargetDependency[] @relation("SuccessorDeps")
-  dependents    TargetDependency[] @relation("PredecessorDeps")
-  baselines     TargetBaseline[]
-  wbsParent     Target?  @relation("WbsChildren", fields: [wbsParentId], references: [id])
-  wbsChildren   Target[] @relation("WbsChildren")
+  wbsParentId     String?
+  progressPct     Float             @default(0)
+  isMilestone     Boolean           @default(false)
+  history         TargetSnapshot[]
+  alerts          Alert[]
+  dependencies    TargetDependency[] @relation("SuccessorDeps")
+  dependents      TargetDependency[] @relation("PredecessorDeps")
+  baselines       TargetBaseline[]
+  wbsParent       Target?           @relation("WbsChildren", fields: [wbsParentId], references: [id])
+  wbsChildren     Target[]          @relation("WbsChildren")
 }
 
 

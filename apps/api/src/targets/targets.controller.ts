@@ -79,10 +79,11 @@ export class TargetsController {
     @Query('owner') owner?: string,
     @Query('status') status?: string,
     @Query('locationId') locationId?: string,
+    @Query('subDepartmentId') subDepartmentId?: string,
     @Req() req?: any,
   ) {
     const userVerticals = req.user.verticalScope || [];
-    return this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId });
+    return this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId, subDepartmentId });
   }
 
   @Get('export/pdf')

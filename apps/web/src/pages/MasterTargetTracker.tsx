@@ -15,7 +15,7 @@ import {
 
 export const MasterTargetTracker: React.FC = () => {
   const { api, user } = useAuth();
-  const { departments } = useDepartments();
+  const { departments, subDepartments } = useDepartments();
   const { locations } = useLocations();
   const navigate = useNavigate();
   
@@ -24,6 +24,7 @@ export const MasterTargetTracker: React.FC = () => {
   
   // Filters
   const [filterVertical, setFilterVertical] = useState('');
+  const [filterSubDepartment, setFilterSubDepartment] = useState('');
   const [filterOwner, setFilterOwner] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
@@ -35,7 +36,8 @@ export const MasterTargetTracker: React.FC = () => {
 
   // Form Fields
   const [formName, setFormName] = useState('');
-  const [formVertical, setFormVertical] = useState(() => departments[0]?.name || '');
+  const [formVertical, setFormVertical] = useState('');
+  const [formSubDepartmentId, setFormSubDepartmentId] = useState('');
   const [formOwner, setFormOwner] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
   const [formDeadline, setFormDeadline] = useState('');
@@ -46,6 +48,13 @@ export const MasterTargetTracker: React.FC = () => {
   const [formLocationId, setFormLocationId] = useState('');
   const [formError, setFormError] = useState('');
   const [formNote, setFormNote] = useState('');
+
+  // Set default vertical
+  useEffect(() => {
+    if (!formVertical && departments.length > 0) {
+      setFormVertical(departments[0].name);
+    }
+  }, [departments, formVertical]);
 
   const roles = user?.roles || [];
   const isManager = roles.some(r => ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER'].includes(r));
@@ -70,6 +79,7 @@ export const MasterTargetTracker: React.FC = () => {
       setLoading(true);
       let url = `/targets?`;
       if (filterVertical) url += `vertical=${filterVertical}&`;
+      if (filterSubDepartment) url += `subDepartmentId=${filterSubDepartment}&`;
       if (filterOwner) url += `owner=${filterOwner}&`;
       if (filterStatus) url += `status=${filterStatus}&`;
       if (filterLocation) url += `locationId=${filterLocation}&`;
@@ -85,7 +95,7 @@ export const MasterTargetTracker: React.FC = () => {
 
   useEffect(() => {
     fetchTargets();
-  }, [filterVertical, filterOwner, filterStatus, filterLocation]);
+  }, [filterVertical, filterSubDepartment, filterOwner, filterStatus, filterLocation]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +104,7 @@ export const MasterTargetTracker: React.FC = () => {
       await api.post('/targets', {
         name: formName,
         vertical: formVertical,
+        subDepartmentId: formSubDepartmentId || null,
         owner: formOwner,
         startDate: formStartDate,
         deadline: formDeadline,
@@ -124,10 +135,12 @@ export const MasterTargetTracker: React.FC = () => {
         payload.owner = formOwner;
         payload.startDate = formStartDate;
         payload.deadline = formDeadline;
+        payload.subDepartmentId = formSubDepartmentId || null;
       } else {
         // Managers/Admin can edit everything
         payload.name = formName;
         payload.vertical = formVertical;
+        payload.subDepartmentId = formSubDepartmentId || null;
         payload.owner = formOwner;
         payload.startDate = formStartDate;
         payload.deadline = formDeadline;
@@ -164,6 +177,7 @@ export const MasterTargetTracker: React.FC = () => {
     setSelectedTarget(t);
     setFormName(t.name);
     setFormVertical(t.vertical);
+    setFormSubDepartmentId(t.subDepartmentId || '');
     setFormOwner(t.owner);
     setFormStartDate(new Date(t.startDate).toISOString().split('T')[0]);
     setFormDeadline(new Date(t.deadline).toISOString().split('T')[0]);
@@ -179,6 +193,7 @@ export const MasterTargetTracker: React.FC = () => {
   const resetForm = () => {
     setFormName('');
     setFormVertical(departments[0]?.name || '');
+    setFormSubDepartmentId('');
     setFormOwner('');
     setFormStartDate('');
     setFormDeadline('');
@@ -263,7 +278,10 @@ export const MasterTargetTracker: React.FC = () => {
               className="form-select" 
               style={{ width: '140px', padding: '8px 12px', height: '38px' }}
               value={filterVertical}
-              onChange={(e) => setFilterVertical(e.target.value)}
+              onChange={(e) => {
+                setFilterVertical(e.target.value);
+                setFilterSubDepartment('');
+              }}
             >
               <option value="">All</option>
               {departments.map((d) => (
@@ -271,6 +289,27 @@ export const MasterTargetTracker: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Sub-Department Filter */}
+          {filterVertical && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Sub-Dept</label>
+              <select 
+                className="form-select" 
+                style={{ width: '150px', padding: '8px 12px', height: '38px' }}
+                value={filterSubDepartment}
+                onChange={(e) => setFilterSubDepartment(e.target.value)}
+              >
+                <option value="">All</option>
+                {subDepartments
+                  .filter(s => s.departmentId === departments.find(d => d.name === filterVertical)?.id)
+                  .map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  ))
+                }
+              </select>
+            </div>
+          )}
 
           {/* Status Filter */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -398,7 +437,14 @@ export const MasterTargetTracker: React.FC = () => {
                               </span>
                             </div>
                           </td>
-                          <td>{t.vertical}</td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span>{t.vertical}</span>
+                              {t.subDepartment?.name && (
+                                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>{t.subDepartment.name}</span>
+                              )}
+                            </div>
+                          </td>
                           <td>{t.owner}</td>
                           <td>
                             <div className="pace-container">
@@ -501,7 +547,7 @@ export const MasterTargetTracker: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <strong style={{ fontSize: '14px', color: '#e5e7eb' }}>{t.name}</strong>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          Owner: {t.owner} • {t.vertical}
+                          Owner: {t.owner} • {t.vertical} {t.subDepartment?.name ? `(${t.subDepartment.name})` : ''}
                         </span>
                         <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 600 }}>
                           100% Completed
@@ -569,12 +615,30 @@ export const MasterTargetTracker: React.FC = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Vertical Department</label>
-                    <select className="form-select" value={formVertical} onChange={e => setFormVertical(e.target.value)}>
+                    <select className="form-select" value={formVertical} onChange={e => {
+                      setFormVertical(e.target.value);
+                      setFormSubDepartmentId('');
+                    }}>
                       {departments.map((d) => (
                         <option key={d.id} value={d.name}>{d.name}</option>
                       ))}
                     </select>
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">Sub-Department (Optional)</label>
+                    <select className="form-select" value={formSubDepartmentId} onChange={e => setFormSubDepartmentId(e.target.value)}>
+                      <option value="">None</option>
+                      {subDepartments
+                        .filter(s => s.departmentId === departments.find(d => d.name === formVertical)?.id)
+                        .map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Owner</label>
                     <input type="text" className="form-input" required value={formOwner} onChange={e => setFormOwner(e.target.value)} placeholder="e.g. John Doe" />
@@ -661,12 +725,30 @@ export const MasterTargetTracker: React.FC = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Vertical Department</label>
-                    <select className="form-select" disabled={isPlanner && !isManager} value={formVertical} onChange={e => setFormVertical(e.target.value)}>
+                    <select className="form-select" disabled={isPlanner && !isManager} value={formVertical} onChange={e => {
+                      setFormVertical(e.target.value);
+                      setFormSubDepartmentId('');
+                    }}>
                       {departments.map((d) => (
                         <option key={d.id} value={d.name}>{d.name}</option>
                       ))}
                     </select>
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">Sub-Department (Optional)</label>
+                    <select className="form-select" disabled={isPlanner && !isManager} value={formSubDepartmentId} onChange={e => setFormSubDepartmentId(e.target.value)}>
+                      <option value="">None</option>
+                      {subDepartments
+                        .filter(s => s.departmentId === departments.find(d => d.name === formVertical)?.id)
+                        .map(sub => (
+                          <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Owner</label>
                     <input type="text" className="form-input" required value={formOwner} onChange={e => setFormOwner(e.target.value)} />

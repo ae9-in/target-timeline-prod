@@ -52,6 +52,10 @@ export class CreateTargetDto {
   @IsString()
   @IsOptional()
   locationId?: string;
+
+  @IsString()
+  @IsOptional()
+  subDepartmentId?: string;
 }
 
 export class UpdateTargetDto {
@@ -111,6 +115,10 @@ export class UpdateTargetDto {
   @IsString()
   @IsOptional()
   locationId?: string;
+
+  @IsString()
+  @IsOptional()
+  subDepartmentId?: string;
 
   @IsString()
   @IsOptional()

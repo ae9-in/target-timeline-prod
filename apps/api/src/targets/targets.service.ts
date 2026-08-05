@@ -28,7 +28,7 @@ export class TargetsService {
 
   async findAll(
     userVerticals: string[],
-    filters: { vertical?: string; owner?: string; status?: string; locationId?: string },
+    filters: { vertical?: string; owner?: string; status?: string; locationId?: string; subDepartmentId?: string },
   ) {
     const where: any = {};
 
@@ -52,9 +52,17 @@ export class TargetsService {
       where.locationId = filters.locationId;
     }
 
+    if (filters.subDepartmentId) {
+      where.subDepartmentId = filters.subDepartmentId;
+    }
+
     const targets = await this.prisma.target.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
+      include: {
+        subDepartment: true,
+        location: true,
+      },
     });
 
     let enriched = targets.map((t) => this.enrichTarget(t));
@@ -72,6 +80,10 @@ export class TargetsService {
   async findOne(id: string, userVerticals: string[]) {
     const target = await this.prisma.target.findUnique({
       where: { id },
+      include: {
+        subDepartment: true,
+        location: true,
+      },
     });
 
     if (!target) {
@@ -111,6 +123,13 @@ export class TargetsService {
     }
     const progressPct = Math.min(100, Math.max(0, actualProgress * 100));
 
+    if (dto.subDepartmentId) {
+      const subDept = await this.prisma.subDepartment.findUnique({
+        where: { id: dto.subDepartmentId },
+      });
+      if (!subDept) throw new BadRequestException('Assigned Sub-Department not found');
+    }
+
     const target = await this.prisma.target.create({
       data: {
         name: dto.name,
@@ -127,6 +146,7 @@ export class TargetsService {
         wbsParentId: dto.wbsParentId || null,
         progressPct: progressPct,
         locationId: dto.locationId || null,
+        subDepartmentId: dto.subDepartmentId || null,
         createdBy: userId,
       },
     });
@@ -236,6 +256,13 @@ export class TargetsService {
       finalProgressPct = Math.min(100, Math.max(0, actualProgress * 100));
     }
 
+    if (dto.subDepartmentId) {
+      const subDept = await this.prisma.subDepartment.findUnique({
+        where: { id: dto.subDepartmentId },
+      });
+      if (!subDept) throw new BadRequestException('Assigned Sub-Department not found');
+    }
+
     // Update target
     const targetAfter = await this.prisma.target.update({
       where: { id },
@@ -254,6 +281,7 @@ export class TargetsService {
         ...(dto.wbsParentId !== undefined && { wbsParentId: dto.wbsParentId }),
         progressPct: finalProgressPct,
         ...(dto.locationId !== undefined && { locationId: dto.locationId || null }),
+        ...(dto.subDepartmentId !== undefined && { subDepartmentId: dto.subDepartmentId || null }),
       },
     });
 
