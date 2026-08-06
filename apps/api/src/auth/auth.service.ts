@@ -227,13 +227,14 @@ export class AuthService {
       }
     } else if (portal === 'admin_user') {
       const userRoleNames = user.roles.map((r: any) => r.name);
-      if (!userRoleNames.includes('ADMIN')) {
+      const hasAdminPortalRole = userRoleNames.some((r: string) => ADMIN_PORTAL_ROLES.includes(r));
+      if (!hasAdminPortalRole) {
         return rejectGeneric('role not eligible for admin portal');
       }
     } else if (portal === 'user') {
       const userRoleNames = user.roles.map((r: any) => r.name);
-      const hasAdminRole = userRoleNames.some((r: string) => ['SUPER_ADMIN', 'ADMIN'].includes(r));
-      if (hasAdminRole) {
+      const hasAdminPortalRole = userRoleNames.some((r: string) => ADMIN_PORTAL_ROLES.includes(r));
+      if (hasAdminPortalRole) {
         return rejectGeneric('admin users must log in through the admin portal');
       }
     }

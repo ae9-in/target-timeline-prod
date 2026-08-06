@@ -54,6 +54,7 @@ apps/api/test-report.ts
 *.temp
 scratch_*.js
 apps/api/scratch_*.js
+scratch/
 
 # Editor & System Files
 .vscode/
