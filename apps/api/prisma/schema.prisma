@@ -187,3 +187,67 @@ model WeeklyReport {
   pdfPath     String   
   summary     Json     // RAG breakdown counts, e.g. { "green": 5, "amber": 2, "red": 1 }
 }
+
+// ─── Analytics Dashboard System ───────────────────────────────────────────────
+
+model Dashboard {
+  id          String                    @id @default(uuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  isDefault   Boolean                   @default(false)
+  isShared    Boolean                   @default(false)
+  createdBy   String
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  widgets     DashboardWidget[]
+  preferences UserDashboardPreference[]
+}
+
+model DashboardWidget {
+  id          String    @id @default(uuid())
+  dashboardId String
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  type        String    // "kpi_card" | "rag_pie" | "bar_chart" | "line_chart" | "heatmap" | "leaderboard" | etc.
+  title       String
+  config      Json      // Widget-specific configuration (filters, colors, metric, chartOptions)
+  layout      Json      // { x, y, w, h } for react-grid-layout
+  isLocked    Boolean   @default(false)
+  isHidden    Boolean   @default(false)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model DashboardTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String   // "executive" | "hr" | "sales" | "target" | "operations" | "custom"
+  thumbnail   String?
+  config      Json     // Full snapshot: { widgets, defaultLayout }
+  isSystem    Boolean  @default(false)
+  createdBy   String
+  createdAt   DateTime @default(now())
+}
+
+model SavedFilter {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  config    Json     // { department, location, dateRange, status, priority, owner, etc. }
+  createdAt DateTime @default(now())
+}
+
+model UserDashboardPreference {
+  id           String    @id @default(uuid())
+  userId       String
+  dashboardId  String
+  dashboard    Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  isStarred    Boolean   @default(false)
+  lastViewedAt DateTime?
+  customLayout Json?     // Per-user layout override
+
+  @@unique([userId, dashboardId])
+}

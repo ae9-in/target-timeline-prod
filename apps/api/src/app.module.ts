@@ -14,6 +14,8 @@ import { AuditModule } from './audit/audit.module';
 import { LocationsModule } from './locations/locations.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { SubDepartmentsModule } from './sub-departments/sub-departments.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { SubDepartmentsModule } from './sub-departments/sub-departments.module';
     LocationsModule,
     DepartmentsModule,
     SubDepartmentsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

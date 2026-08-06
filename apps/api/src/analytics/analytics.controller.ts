@@ -22,4 +22,48 @@ export class AnalyticsController {
     const userVerticals = req.user.verticalScope || [];
     return this.analyticsService.getTrends(userVerticals);
   }
+
+  // ─── New Dashboard Analytics Endpoints ────────────────────────────────────
+
+  @Get('kpis')
+  @RequirePermission('analytics', 'read')
+  async getKPIs(@Req() req: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.analyticsService.getKPIs(userVerticals);
+  }
+
+  @Get('department-breakdown')
+  @RequirePermission('analytics', 'read')
+  async getDepartmentBreakdown(@Req() req: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.analyticsService.getDepartmentBreakdown(userVerticals);
+  }
+
+  @Get('leaderboard')
+  @RequirePermission('analytics', 'read')
+  async getLeaderboard(@Req() req: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.analyticsService.getLeaderboard(userVerticals);
+  }
+
+  @Get('deadlines')
+  @RequirePermission('analytics', 'read')
+  async getDeadlines(@Req() req: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.analyticsService.getDeadlines(userVerticals);
+  }
+
+  @Get('heatmap')
+  @RequirePermission('analytics', 'read')
+  async getHeatmap(@Req() req: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.analyticsService.getHeatmapData(userVerticals);
+  }
+
+  @Get('insights')
+  @RequirePermission('analytics', 'read')
+  async getInsights(@Req() req: any) {
+    const userVerticals = req.user.verticalScope || [];
+    return this.analyticsService.getInsights(userVerticals);
+  }
 }
