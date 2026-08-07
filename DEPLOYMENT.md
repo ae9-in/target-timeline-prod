@@ -84,7 +84,7 @@ You can log in to the system using the following test accounts:
 
 | Role | Email | Password |
 | :--- | :--- | :--- |
-| **Super Admin** | `admin@target.com` | `AksharaAdmin@123!` |
+| **Super Admin** | `superadmin@targets.com` | `[Generated during setup or configured in .env]` |
 | **Leadership** | `leader@targets.com` | `LeaderSecure123!` |
 | **Sales Manager** | `sales@targets.com` | `SalesSecure123!` |
 | **Production Manager** | `prod@targets.com` | `ProdSecure123!` |

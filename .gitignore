@@ -17,6 +17,7 @@ out/
 .env
 .env.local
 .env.*
+!.env.example
 *.env
 
 # RSA JWT Private/Public Keys

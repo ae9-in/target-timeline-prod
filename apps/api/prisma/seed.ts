@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -135,7 +136,23 @@ async function main() {
   }
 
   // Hash passwords
-  const adminPasswordHash = await bcrypt.hash('AksharaAdmin@123!', 12);
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'superadmin@targets.com';
+  let superAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+  if (!superAdminPassword) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+';
+    superAdminPassword = '';
+    for (let i = 0; i < 16; i++) {
+      superAdminPassword += chars[crypto.randomInt(0, chars.length)];
+    }
+    console.log('\n==================================================');
+    console.log('WARNING: No SUPER_ADMIN_PASSWORD set in .env.');
+    console.log('Generated a random secure password for Super Admin:');
+    console.log(`Email:    ${superAdminEmail}`);
+    console.log(`Password: ${superAdminPassword}`);
+    console.log('==================================================\n');
+  }
+
+  const adminPasswordHash = await bcrypt.hash(superAdminPassword, 12);
   const leaderPasswordHash = await bcrypt.hash('LeaderSecure123!', 12);
   const salesPasswordHash = await bcrypt.hash('SalesSecure123!', 12);
   const prodPasswordHash = await bcrypt.hash('ProdSecure123!', 12);
@@ -152,6 +169,7 @@ async function main() {
     'hr_mgr@targets.com',
     'viewer_sales@targets.com',
     'admin@targets.com',
+    'admin@target.com', // old Super Admin email to clean up
   ];
   await prisma.user.deleteMany({
     where: { email: { in: oldEmails } },
@@ -160,7 +178,7 @@ async function main() {
   // 3. Create Users
   const usersToSeed = [
     {
-      email: 'admin@target.com',
+      email: superAdminEmail,
       passwordHash: adminPasswordHash,
       name: 'Super Admin',
       roles: { connect: [{ id: roles.SUPER_ADMIN.id }] },
