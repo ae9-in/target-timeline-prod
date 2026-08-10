@@ -108,3 +108,10 @@ apps/api/src/generated/
 
 # Windows shortcuts
 *.lnk
+
+# Local databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+

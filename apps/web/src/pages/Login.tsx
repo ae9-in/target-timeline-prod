@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Target, Lock, Mail, ShieldAlert, Shield, AlertTriangle } from 'lucide-react';
+import { Target, Lock, Mail, ShieldAlert, Shield, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 interface LoginPageProps {
   portal?: 'user' | 'admin';
@@ -13,6 +13,7 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
 
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const location = useLocation();
@@ -71,11 +72,11 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
       <div className={`login-card ${isCurrentlyAdmin ? 'admin-login-card' : ''}`}>
 
         {/* Admin badge — visually distinguishable at a glance */}
-        {isCurrentlyAdmin && (
+        {isSuperAdminPortal && (
           <div className="admin-portal-badge">
             <AlertTriangle size={12} />
             <span>
-              {isSuperAdminPortal ? 'SUPER ADMIN PORTAL — RESTRICTED ACCESS' : 'ADMIN PORTAL — RESTRICTED ACCESS'}
+              SUPER ADMIN PORTAL — RESTRICTED ACCESS
             </span>
           </div>
         )}
@@ -193,15 +194,36 @@ export const Login: React.FC<LoginPageProps> = ({ portal = 'user' }) => {
               <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
               <input
                 id={isCurrentlyAdmin ? 'admin-password-input' : 'user-password-input'}
-                type="password"
+                type={showPass ? 'text' : 'password'}
                 className="form-input"
                 placeholder="••••••••"
-                style={{ paddingLeft: '38px' }}
+                style={{ paddingLeft: '38px', paddingRight: '38px' }}
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 required
                 autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px',
+                }}
+                title={showPass ? 'Hide password' : 'Show password'}
+              >
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
             {!isCurrentlyAdmin && (
               <div style={{ textAlign: 'right', marginTop: '6px' }}>

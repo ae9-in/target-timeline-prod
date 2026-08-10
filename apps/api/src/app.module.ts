@@ -15,6 +15,7 @@ import { LocationsModule } from './locations/locations.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { SubDepartmentsModule } from './sub-departments/sub-departments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { EmployeesModule } from './employees/employees.module';
 
 
 @Module({
@@ -36,6 +37,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DepartmentsModule,
     SubDepartmentsModule,
     DashboardModule,
+    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

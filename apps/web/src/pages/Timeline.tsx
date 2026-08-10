@@ -174,6 +174,14 @@ export const Timeline: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/employees')
+      .then(res => setEmployees(res.data))
+      .catch(err => console.error('Failed to load employees for timeline selection', err));
+  }, [api]);
+
   // Collapse status of groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -2217,14 +2225,26 @@ export const Timeline: React.FC = () => {
               />
             </div>
             <div className="gantt-quick-create-row">
-              <label>Owner</label>
-              <input
-                type="text"
+              <label>Employee</label>
+              <select
                 required
                 value={qcOwner}
-                onChange={(e) => setQcOwner(e.target.value)}
-                placeholder="e.g. John Doe"
-              />
+                onChange={(e) => {
+                  const empName = e.target.value;
+                  setQcOwner(empName);
+                  const selectedEmp = employees.find(emp => emp.name === empName);
+                  if (selectedEmp) {
+                    setQcVertical(selectedEmp.department.name);
+                    setQcLocationId(selectedEmp.locationId);
+                    setQcSubDepartmentId('');
+                  }
+                }}
+              >
+                <option value="">Select Employee...</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.name}>{emp.name}</option>
+                ))}
+              </select>
             </div>
             <div className="gantt-quick-create-row">
               <label>Vertical</label>

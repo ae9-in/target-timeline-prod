@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ScrollText,
   Lock,
+  Briefcase,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -36,6 +37,7 @@ export const Sidebar: React.FC = () => {
   const isLeadership = roles.includes('LEADERSHIP');
   const showAnalytics = isSuperAdmin || isLeadership || roles.includes('ADMIN');
   const showReports = isSuperAdmin || isLeadership || roles.includes('ADMIN');
+  const showEmployees = isSuperAdmin || roles.includes('ADMIN');
 
   const mainNavItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -44,6 +46,7 @@ export const Sidebar: React.FC = () => {
     { name: 'Calendar', path: '/calendar', icon: Calendar },
     { name: 'Departments', path: '/departments', icon: Building2 },
     { name: 'Department Performance', path: '/performance', icon: Users },
+    ...(showEmployees ? [{ name: 'Employees', path: '/employees', icon: Briefcase }] : []),
     ...(showAnalytics ? [{ name: 'Analytics', path: '/analytics', icon: BarChart3 }] : []),
     { name: 'Alerts & Risks', path: '/alerts', icon: AlertTriangle },
     ...(showReports ? [{ name: 'Weekly Reports', path: '/reports', icon: FileText }] : []),

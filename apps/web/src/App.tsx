@@ -28,12 +28,24 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminAuditLog } from './pages/admin/AdminAuditLog';
 import { AdminRolesPermissions } from './pages/admin/AdminRolesPermissions';
+import { AdminEmployees } from './pages/admin/AdminEmployees';
 
 // ─── Guard: blocks non-SUPER_ADMIN from the entire /admin/* subtree ───────────
 const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/admin/login" replace />;
   if (!user.roles.includes('SUPER_ADMIN')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
+// ─── Guard: blocks non-admin/super-admin from Employees page ─────────────────
+const EmployeeGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const roles = user.roles || [];
+  if (!roles.includes('SUPER_ADMIN') && !roles.includes('ADMIN')) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
@@ -99,6 +111,10 @@ const MainAppContent: React.FC = () => {
             <Route path="/timeline" element={<Timeline />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/departments" element={<DepartmentManagement />} />
+            <Route
+              path="/employees"
+              element={<EmployeeGuard><AdminEmployees /></EmployeeGuard>}
+            />
             <Route path="/performance" element={<DepartmentPerformance />} />
             <Route
               path="/analytics"

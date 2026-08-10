@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Target, User, Mail, Lock, CheckCircle, ShieldAlert, ArrowRight, CheckCheck, Shield, AlertTriangle } from 'lucide-react';
+import { Target, User, Mail, Lock, CheckCircle, ShieldAlert, ArrowRight, CheckCheck, Shield, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 interface SignUpPageProps {
   portal?: 'user' | 'admin';
@@ -21,7 +21,9 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ portal = 'user' }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [confirmPass, setConfirmPass] = useState('');
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -243,15 +245,36 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ portal = 'user' }) => {
               <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
               <input
                 id="signup-password-input"
-                type="password"
+                type={showPass ? 'text' : 'password'}
                 className="form-input"
                 placeholder="Minimum 8 characters"
-                style={{ paddingLeft: '38px' }}
+                style={{ paddingLeft: '38px', paddingRight: '38px' }}
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 required
                 autoComplete="new-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px',
+                }}
+                title={showPass ? 'Hide password' : 'Show password'}
+              >
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
@@ -267,15 +290,36 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ portal = 'user' }) => {
               />
               <input
                 id="signup-confirm-input"
-                type="password"
+                type={showConfirmPass ? 'text' : 'password'}
                 className="form-input"
                 placeholder="Re-enter your password"
-                style={{ paddingLeft: '38px' }}
+                style={{ paddingLeft: '38px', paddingRight: '38px' }}
                 value={confirmPass}
                 onChange={(e) => setConfirmPass(e.target.value)}
                 required
                 autoComplete="new-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPass(!showConfirmPass)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px',
+                }}
+                title={showConfirmPass ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

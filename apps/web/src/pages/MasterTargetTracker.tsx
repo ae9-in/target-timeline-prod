@@ -56,6 +56,14 @@ export const MasterTargetTracker: React.FC = () => {
     }
   }, [departments, formVertical]);
 
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/employees')
+      .then(res => setEmployees(res.data))
+      .catch(err => console.error('Failed to load employees for target tracker selection', err));
+  }, [api]);
+
   const roles = user?.roles || [];
   const isManager = roles.some(r => ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER'].includes(r));
   const isPlanner = roles.includes('PLANNING_ANALYST');
@@ -640,8 +648,27 @@ export const MasterTargetTracker: React.FC = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Owner</label>
-                    <input type="text" className="form-input" required value={formOwner} onChange={e => setFormOwner(e.target.value)} placeholder="e.g. John Doe" />
+                    <label className="form-label">Employee</label>
+                    <select
+                      className="form-select"
+                      required
+                      value={formOwner}
+                      onChange={(e) => {
+                        const empName = e.target.value;
+                        setFormOwner(empName);
+                        const selectedEmp = employees.find(emp => emp.name === empName);
+                        if (selectedEmp) {
+                          setFormVertical(selectedEmp.department.name);
+                          setFormLocationId(selectedEmp.locationId);
+                          setFormSubDepartmentId('');
+                        }
+                      }}
+                    >
+                      <option value="">Select Employee...</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.name}>{emp.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -750,8 +777,27 @@ export const MasterTargetTracker: React.FC = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Owner</label>
-                    <input type="text" className="form-input" required value={formOwner} onChange={e => setFormOwner(e.target.value)} />
+                    <label className="form-label">Employee</label>
+                    <select
+                      className="form-select"
+                      required
+                      value={formOwner}
+                      onChange={(e) => {
+                        const empName = e.target.value;
+                        setFormOwner(empName);
+                        const selectedEmp = employees.find(emp => emp.name === empName);
+                        if (selectedEmp) {
+                          setFormVertical(selectedEmp.department.name);
+                          setFormLocationId(selectedEmp.locationId);
+                          setFormSubDepartmentId('');
+                        }
+                      }}
+                    >
+                      <option value="">Select Employee...</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.name}>{emp.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

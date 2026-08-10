@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Target, Lock, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Target, Lock, CheckCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 
 export const ResetPasswordPage: React.FC = () => {
   const { resetPassword } = useAuth();
@@ -10,7 +10,9 @@ export const ResetPasswordPage: React.FC = () => {
   const token = searchParams.get('token');
 
   const [newPass, setNewPass] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
   const [confirmPass, setConfirmPass] = useState('');
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -80,15 +82,36 @@ export const ResetPasswordPage: React.FC = () => {
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '13px', color: 'var(--text-muted)' }} />
                 <input
                   id="reset-password-input"
-                  type="password"
+                  type={showNewPass ? 'text' : 'password'}
                   className="form-input"
                   placeholder="Minimum 8 characters"
-                  style={{ paddingLeft: '38px' }}
+                  style={{ paddingLeft: '38px', paddingRight: '38px' }}
                   value={newPass}
                   onChange={(e) => setNewPass(e.target.value)}
                   required
                   autoComplete="new-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPass(!showNewPass)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                  }}
+                  title={showNewPass ? 'Hide password' : 'Show password'}
+                >
+                  {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
@@ -104,15 +127,36 @@ export const ResetPasswordPage: React.FC = () => {
                 />
                 <input
                   id="reset-confirm-input"
-                  type="password"
+                  type={showConfirmPass ? 'text' : 'password'}
                   className="form-input"
                   placeholder="Re-enter new password"
-                  style={{ paddingLeft: '38px' }}
+                  style={{ paddingLeft: '38px', paddingRight: '38px' }}
                   value={confirmPass}
                   onChange={(e) => setConfirmPass(e.target.value)}
                   required
                   autoComplete="new-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPass(!showConfirmPass)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                  }}
+                  title={showConfirmPass ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 

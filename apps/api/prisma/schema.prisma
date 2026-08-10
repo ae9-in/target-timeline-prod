@@ -52,6 +52,7 @@ model Location {
   createdAt DateTime @default(now())
   targets   Target[]
   departments Department[]
+  employees Employee[]
 }
 
 model Department {
@@ -66,6 +67,7 @@ model Department {
   location       Location?       @relation(fields: [locationId], references: [id])
   createdAt      DateTime        @default(now())
   subDepartments SubDepartment[]
+  employees      Employee[]
 }
 
 model SubDepartment {
@@ -250,4 +252,15 @@ model UserDashboardPreference {
   customLayout Json?     // Per-user layout override
 
   @@unique([userId, dashboardId])
+}
+
+model Employee {
+  id             String      @id @default(uuid())
+  name           String
+  employmentType String      // "FULLTIME" | "INTERN"
+  departmentId   String
+  department     Department  @relation(fields: [departmentId], references: [id])
+  locationId     String
+  location       Location    @relation(fields: [locationId], references: [id])
+  createdAt      DateTime    @default(now())
 }
