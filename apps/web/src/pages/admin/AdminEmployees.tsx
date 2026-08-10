@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   UserPlus, Search, RefreshCw, MoreVertical, ShieldAlert,
-  Edit2, Trash2, CheckCircle, Briefcase, MapPin, Layers
+  Edit2, Trash2, Briefcase, MapPin, Layers
 } from 'lucide-react';
 
 interface EmployeeRow {

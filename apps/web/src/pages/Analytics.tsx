@@ -6,7 +6,7 @@ import ReactECharts from 'echarts-for-react';
 import {
   MapPin, BarChart3, ChevronDown, ChevronRight, User,
   Building2, Target, Award, AlertCircle, Briefcase, ListFilter,
-  CheckCircle, ShieldAlert, TrendingUp, Filter, Sparkles, Trophy
+  CheckCircle, ShieldAlert, TrendingUp, Sparkles, Trophy
 } from 'lucide-react';
 
 type AnalysisTab = 'location' | 'department' | 'employee';
@@ -30,7 +30,7 @@ interface PerformanceStat {
 export const Analytics: React.FC = () => {
   const { api } = useAuth();
   const { locations, loading: locLoading } = useLocations();
-  const { departments, subDepartments } = useDepartments();
+  const { departments } = useDepartments();
   const [targets, setTargets] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -684,16 +684,6 @@ export const Analytics: React.FC = () => {
     return { pie: pieOption, gauge: gaugeOption };
   }, [scopedMetrics]);
 
-  // Determine if we have drilled down to the leaf node (i.e. all active options selected)
-  const isLeafSelected = useMemo(() => {
-    if (activeTab === 'location') {
-      return selectedLocId !== 'all' && selectedDeptId !== 'all' && selectedEmpId !== 'all';
-    } else if (activeTab === 'department') {
-      return selectedDeptId !== 'all' && selectedLocId !== 'all' && selectedEmpId !== 'all';
-    } else {
-      return selectedEmpId !== 'all' && selectedDeptId !== 'all' && selectedLocId !== 'all';
-    }
-  }, [activeTab, selectedLocId, selectedDeptId, selectedEmpId]);
 
   // Decide if we should render Employee detail profile view
   // Show Employee details whenever a specific employee is selected in the hierarchy

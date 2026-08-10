@@ -20,7 +20,6 @@ import { Calendar } from './pages/Calendar';
 import { DepartmentPerformance } from './pages/DepartmentPerformance';
 import { DepartmentManagement } from './pages/DepartmentManagement';
 import { Analytics } from './pages/Analytics';
-import { AnalyticsDashboardPage } from './pages/analytics/AnalyticsDashboardPage';
 import { Alerts } from './pages/Alerts';
 import { WeeklyReports } from './pages/WeeklyReports';
 import { LocationManagement } from './pages/LocationManagement';
@@ -118,7 +117,7 @@ const MainAppContent: React.FC = () => {
             <Route path="/performance" element={<DepartmentPerformance />} />
             <Route
               path="/analytics"
-              element={hasLeadershipScope ? <AnalyticsDashboardPage /> : <Navigate to="/dashboard" replace />}
+              element={hasLeadershipScope ? <Analytics /> : <Navigate to="/dashboard" replace />}
             />
             <Route path="/alerts" element={<Alerts />} />
             <Route
