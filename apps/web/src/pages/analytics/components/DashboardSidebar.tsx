@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Search, PlusCircle, BarChart3, Activity, Brain, Target } from 'lucide-react';
 import { useDashboard } from '../contexts/DashboardContext';
 import { WIDGET_REGISTRY, WIDGET_CATEGORIES } from '../constants/widget-registry';
-import type { WidgetType, WidgetCategory } from '../types/dashboard.types';
+import type { WidgetType } from '../types/dashboard.types';
 
 interface Props {
   onClose: () => void;

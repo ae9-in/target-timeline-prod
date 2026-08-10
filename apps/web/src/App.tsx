@@ -19,7 +19,6 @@ import { Timeline } from './pages/Timeline';
 import { Calendar } from './pages/Calendar';
 import { DepartmentPerformance } from './pages/DepartmentPerformance';
 import { DepartmentManagement } from './pages/DepartmentManagement';
-import { Analytics } from './pages/Analytics';
 import { AnalyticsDashboardPage } from './pages/analytics/AnalyticsDashboardPage';
 import { Alerts } from './pages/Alerts';
 import { WeeklyReports } from './pages/WeeklyReports';

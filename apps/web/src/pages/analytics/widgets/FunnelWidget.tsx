@@ -22,7 +22,7 @@ export const FunnelWidget: React.FC<Props> = () => {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '8px', justifyContent: 'center' }}>
       <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>Completion Funnel</div>
-      {STAGES.map((stage, i) => {
+      {STAGES.map((stage) => {
         const value = (kpis as any)[stage.key] ?? 0;
         const pct = Math.round((value / max) * 100);
         const width = Math.max(pct, 8);

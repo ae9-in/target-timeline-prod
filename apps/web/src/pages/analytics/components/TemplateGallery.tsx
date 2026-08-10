@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, BarChart3, Target, TrendingUp, Users, Zap } from 'lucide-react';
+import { X, BarChart3, Zap } from 'lucide-react';
 import { useDashboard } from '../contexts/DashboardContext';
 import { DASHBOARD_TEMPLATES } from '../constants/dashboard-templates';
 import type { WidgetType } from '../types/dashboard.types';
@@ -32,7 +32,7 @@ export const TemplateGallery: React.FC<Props> = ({ onClose }) => {
   const handleApplyTemplate = async (template: typeof DASHBOARD_TEMPLATES[0]) => {
     setLoading(template.id);
     try {
-      const dash = await createDashboard({
+      await createDashboard({
         name: template.name,
         description: template.description,
         color: template.color,
