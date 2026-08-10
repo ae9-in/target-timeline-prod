@@ -1,0 +1,181 @@
+import type { WidgetRegistryEntry, WidgetType } from '../types/dashboard.types';
+import {
+  BarChart3,
+  Target,
+  TrendingUp,
+  Building2,
+  PieChart,
+  LineChart,
+  Calendar,
+  Award,
+  Clock,
+  Activity,
+  Table,
+  Brain
+} from 'lucide-react';
+
+export const WIDGET_REGISTRY: WidgetRegistryEntry[] = [
+  // ─── KPI & Metrics ──────────────────────────────────────────────────────────
+  {
+    type: 'kpi_card',
+    label: 'KPI Card',
+    description: 'Single metric with trend indicator',
+    category: 'KPI & Metrics',
+    icon: BarChart3,
+    defaultLayout: { x: 0, y: 0, w: 3, h: 2 },
+    defaultConfig: { metric: 'total', colorScheme: 'blue' },
+    minW: 2, minH: 2,
+  },
+  {
+    type: 'completion_gauge',
+    label: 'Completion Gauge',
+    description: 'Animated gauge showing average completion %',
+    category: 'KPI & Metrics',
+    icon: Target,
+    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
+    defaultConfig: {},
+    minW: 2, minH: 3,
+  },
+  {
+    type: 'progress_card',
+    label: 'Progress Card',
+    description: 'Progress bar with contextual metric',
+    category: 'KPI & Metrics',
+    icon: TrendingUp,
+    defaultLayout: { x: 0, y: 0, w: 4, h: 2 },
+    defaultConfig: { metric: 'successRate' },
+    minW: 2, minH: 2,
+  },
+  {
+    type: 'dept_progress',
+    label: 'Department Cards',
+    description: 'Visual cards for each department progress',
+    category: 'KPI & Metrics',
+    icon: Building2,
+    defaultLayout: { x: 0, y: 0, w: 12, h: 4 },
+    defaultConfig: {},
+    minW: 6, minH: 3,
+  },
+
+  // ─── Charts ─────────────────────────────────────────────────────────────────
+  {
+    type: 'rag_pie',
+    label: 'RAG Status Pie',
+    description: 'Donut chart of Green/Amber/Red distribution',
+    category: 'Charts',
+    icon: PieChart,
+    defaultLayout: { x: 0, y: 0, w: 4, h: 5 },
+    defaultConfig: { showLegend: true },
+    minW: 3, minH: 4,
+  },
+  {
+    type: 'bar_chart',
+    label: 'Department Bar Chart',
+    description: 'Stacked bar chart by department/location',
+    category: 'Charts',
+    icon: BarChart3,
+    defaultLayout: { x: 0, y: 0, w: 6, h: 5 },
+    defaultConfig: { chartType: 'stacked' },
+    minW: 4, minH: 4,
+  },
+  {
+    type: 'line_chart',
+    label: 'Trend Line Chart',
+    description: 'Historical RAG trend over time',
+    category: 'Charts',
+    icon: LineChart,
+    defaultLayout: { x: 0, y: 0, w: 8, h: 5 },
+    defaultConfig: {},
+    minW: 4, minH: 4,
+  },
+  {
+    type: 'donut_chart',
+    label: 'Donut Chart',
+    description: 'Completion % donut visualization',
+    category: 'Charts',
+    icon: PieChart,
+    defaultLayout: { x: 0, y: 0, w: 4, h: 5 },
+    defaultConfig: {},
+    minW: 3, minH: 4,
+  },
+  {
+    type: 'heatmap',
+    label: 'Activity Heatmap',
+    description: 'Calendar heatmap of target update activity',
+    category: 'Charts',
+    icon: Calendar,
+    defaultLayout: { x: 0, y: 0, w: 12, h: 4 },
+    defaultConfig: {},
+    minW: 6, minH: 3,
+  },
+  {
+    type: 'area_chart',
+    label: 'Area Trend Chart',
+    description: 'Filled area chart for progress trends',
+    category: 'Charts',
+    icon: LineChart,
+    defaultLayout: { x: 0, y: 0, w: 8, h: 5 },
+    defaultConfig: {},
+    minW: 4, minH: 4,
+  },
+
+  // ─── Tables & Lists ──────────────────────────────────────────────────────────
+  {
+    type: 'leaderboard',
+    label: 'Employee Leaderboard',
+    description: 'Employee ranking by target completion score',
+    category: 'Tables & Lists',
+    icon: Award,
+    defaultLayout: { x: 0, y: 0, w: 6, h: 6 },
+    defaultConfig: { maxItems: 10 },
+    minW: 4, minH: 4,
+  },
+  {
+    type: 'deadlines',
+    label: 'Deadlines Panel',
+    description: 'Upcoming and missed deadlines',
+    category: 'Tables & Lists',
+    icon: Clock,
+    defaultLayout: { x: 0, y: 0, w: 6, h: 6 },
+    defaultConfig: { maxItems: 8 },
+    minW: 4, minH: 4,
+  },
+  {
+    type: 'activity_feed',
+    label: 'Activity Feed',
+    description: 'Live feed of recent target updates',
+    category: 'Tables & Lists',
+    icon: Activity,
+    defaultLayout: { x: 0, y: 0, w: 4, h: 6 },
+    defaultConfig: { maxItems: 10 },
+    minW: 3, minH: 4,
+  },
+  {
+    type: 'drill_table',
+    label: 'Target Data Table',
+    description: 'Filterable, sortable table of all targets',
+    category: 'Tables & Lists',
+    icon: Table,
+    defaultLayout: { x: 0, y: 0, w: 12, h: 6 },
+    defaultConfig: { maxItems: 20 },
+    minW: 6, minH: 4,
+  },
+
+  // ─── AI & Insights ───────────────────────────────────────────────────────────
+  {
+    type: 'ai_insights',
+    label: 'AI Insights',
+    description: 'Smart rule-based insights from your data',
+    category: 'AI & Insights',
+    icon: Brain,
+    defaultLayout: { x: 0, y: 0, w: 6, h: 5 },
+    defaultConfig: {},
+    minW: 4, minH: 3,
+  },
+];
+
+export const WIDGET_BY_TYPE = new Map<WidgetType, WidgetRegistryEntry>(
+  WIDGET_REGISTRY.map(w => [w.type, w])
+);
+
+export const WIDGET_CATEGORIES = [...new Set(WIDGET_REGISTRY.map(w => w.category))];

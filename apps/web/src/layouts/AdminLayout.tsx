@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Shield, LayoutDashboard, Users, FileText, Settings,
-  LogOut, ExternalLink, AlertTriangle, MapPin,
+  LogOut, ExternalLink, AlertTriangle, MapPin, LayoutGrid,
 } from 'lucide-react';
 
 export const AdminLayout: React.FC = () => {
@@ -19,6 +19,7 @@ export const AdminLayout: React.FC = () => {
     { name: 'Audit Log', path: '/admin/audit-log', icon: FileText },
     { name: 'Roles & Permissions', path: '/admin/roles-permissions', icon: Settings },
     { name: 'Locations', path: '/admin/locations', icon: MapPin },
+    { name: 'Custom Dashboards', path: '/admin/custom-dashboard', icon: LayoutGrid },
   ];
 
   const handleLogout = async () => {
@@ -117,6 +118,7 @@ const AdminPageTitle: React.FC<{ pathname: string }> = ({ pathname }) => {
     '/admin/audit-log': { title: 'Audit Log', subtitle: 'Full chronological record of system events.' },
     '/admin/roles-permissions': { title: 'Roles & Permissions', subtitle: 'View the access control matrix.' },
     '/admin/locations': { title: 'Location Management', subtitle: 'Manage site locations and assignments.' },
+    '/admin/custom-dashboard': { title: 'Custom Dashboards', subtitle: 'Manage custom drag-and-drop dashboards and widgets.' },
   };
 
   const match = Object.entries(titles).find(([key]) => pathname.startsWith(key));

@@ -20,6 +20,7 @@ import { Calendar } from './pages/Calendar';
 import { DepartmentPerformance } from './pages/DepartmentPerformance';
 import { DepartmentManagement } from './pages/DepartmentManagement';
 import { Analytics } from './pages/Analytics';
+import { AnalyticsDashboardPage } from './pages/analytics/AnalyticsDashboardPage';
 import { Alerts } from './pages/Alerts';
 import { WeeklyReports } from './pages/WeeklyReports';
 import { LocationManagement } from './pages/LocationManagement';
@@ -239,6 +240,7 @@ const AppContent: React.FC = () => {
         <Route path="audit-log" element={<AdminAuditLog />} />
         <Route path="roles-permissions" element={<AdminRolesPermissions />} />
         <Route path="locations" element={<LocationManagement />} />
+        <Route path="custom-dashboard" element={<AnalyticsDashboardPage />} />
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
 
