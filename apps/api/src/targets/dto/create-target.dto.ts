@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsEnum, IsDateString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateTargetDto {
   @IsString()

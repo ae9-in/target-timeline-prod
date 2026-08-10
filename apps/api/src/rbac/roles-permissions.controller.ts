@@ -18,7 +18,11 @@ export class RolesPermissionsController {
   async getAll() {
     return this.prisma.permission.findMany({
       include: { role: { select: { name: true } } },
-      orderBy: [{ role: { name: 'asc' } }, { resource: 'asc' }, { action: 'asc' }],
+      orderBy: [
+        { role: { name: 'asc' } },
+        { resource: 'asc' },
+        { action: 'asc' },
+      ],
     });
   }
 }

@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { CreateSubDepartmentDto, UpdateSubDepartmentDto } from './dto/sub-department.dto';
+import {
+  CreateSubDepartmentDto,
+  UpdateSubDepartmentDto,
+} from './dto/sub-department.dto';
 
 @Injectable()
 export class SubDepartmentsService {
@@ -38,7 +45,9 @@ export class SubDepartmentsService {
       },
     });
     if (existing) {
-      throw new BadRequestException('A sub-department with this name already exists in the selected department');
+      throw new BadRequestException(
+        'A sub-department with this name already exists in the selected department',
+      );
     }
 
     return this.prisma.subDepartment.create({
@@ -73,7 +82,9 @@ export class SubDepartmentsService {
         },
       });
       if (existing) {
-        throw new BadRequestException('A sub-department with this name already exists in the department');
+        throw new BadRequestException(
+          'A sub-department with this name already exists in the department',
+        );
       }
     }
 

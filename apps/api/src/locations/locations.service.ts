@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateLocationDto, UpdateLocationDto } from './dto/location.dto';
 
@@ -37,8 +41,11 @@ export class LocationsService {
   }
 
   async create(dto: CreateLocationDto, userId: string) {
-    const existing = await this.prisma.location.findUnique({ where: { name: dto.name } });
-    if (existing) throw new ConflictException(`Location "${dto.name}" already exists`);
+    const existing = await this.prisma.location.findUnique({
+      where: { name: dto.name },
+    });
+    if (existing)
+      throw new ConflictException(`Location "${dto.name}" already exists`);
 
     return this.prisma.location.create({
       data: {
@@ -55,7 +62,9 @@ export class LocationsService {
     await this.findOne(id);
 
     if (dto.name) {
-      const existing = await this.prisma.location.findUnique({ where: { name: dto.name } });
+      const existing = await this.prisma.location.findUnique({
+        where: { name: dto.name },
+      });
       if (existing && existing.id !== id) {
         throw new ConflictException(`Location "${dto.name}" already exists`);
       }

@@ -22,11 +22,11 @@ export interface CpmDependency {
 
 export interface CpmResult {
   id: string;
-  earlyStart: number;   // in days from project start
+  earlyStart: number; // in days from project start
   earlyFinish: number;
   lateStart: number;
   lateFinish: number;
-  float: number;        // total float (lateStart - earlyStart)
+  float: number; // total float (lateStart - earlyStart)
   isCritical: boolean;
 }
 
@@ -59,7 +59,7 @@ export function hasCycle(
 
   function dfs(node: string): boolean {
     color.set(node, 1); // grey — currently in DFS stack
-    for (const neighbor of (adj.get(node) || [])) {
+    for (const neighbor of adj.get(node) || []) {
       if (!color.has(neighbor)) color.set(neighbor, 0);
       const c = color.get(neighbor)!;
       if (c === 1) return true; // back edge = cycle
@@ -81,10 +81,7 @@ export function hasCycle(
  * Compute topological order via Kahn's algorithm (BFS).
  * Assumes acyclic graph (call hasCycle first).
  */
-function topoSort(
-  taskIds: string[],
-  deps: CpmDependency[],
-): string[] {
+function topoSort(taskIds: string[], deps: CpmDependency[]): string[] {
   const inDegree = new Map<string, number>();
   const adj = new Map<string, string[]>();
 
@@ -108,7 +105,7 @@ function topoSort(
   while (queue.length > 0) {
     const node = queue.shift()!;
     sorted.push(node);
-    for (const neighbor of (adj.get(node) || [])) {
+    for (const neighbor of adj.get(node) || []) {
       const newDeg = (inDegree.get(neighbor) || 1) - 1;
       inDegree.set(neighbor, newDeg);
       if (newDeg === 0) queue.push(neighbor);
@@ -129,9 +126,12 @@ function effectiveConstraint(
 ): number {
   const lag = dep.lagDays || 0;
   switch (dep.type) {
-    case 'SS': return predEarlyStart + lag;
-    case 'FF': return predEarlyFinish + lag - succDuration;
-    case 'SF': return predEarlyStart + lag - succDuration; // unusual
+    case 'SS':
+      return predEarlyStart + lag;
+    case 'FF':
+      return predEarlyFinish + lag - succDuration;
+    case 'SF':
+      return predEarlyStart + lag - succDuration; // unusual
     case 'FS':
     default:
       return predEarlyFinish + lag;
@@ -151,7 +151,10 @@ export function computeCriticalPath(
     taskMap.set(t.id, t);
   }
 
-  const sorted = topoSort(tasks.map((t) => t.id), deps);
+  const sorted = topoSort(
+    tasks.map((t) => t.id),
+    deps,
+  );
 
   // Build successor/predecessor maps
   const successors = new Map<string, CpmDependency[]>();
@@ -179,8 +182,16 @@ export function computeCriticalPath(
     let es = 0;
     for (const dep of preds) {
       const predES = earlyStart.get(dep.predecessorId) ?? 0;
-      const predEF = earlyFinish.get(dep.predecessorId) ?? (taskMap.get(dep.predecessorId)?.durationDays ?? 0);
-      const constraint = effectiveConstraint(dep, predES, predEF, task.durationDays);
+      const predEF =
+        earlyFinish.get(dep.predecessorId) ??
+        taskMap.get(dep.predecessorId)?.durationDays ??
+        0;
+      const constraint = effectiveConstraint(
+        dep,
+        predES,
+        predEF,
+        task.durationDays,
+      );
       es = Math.max(es, constraint);
     }
     earlyStart.set(id, Math.max(0, es));
@@ -208,11 +219,18 @@ export function computeCriticalPath(
         const lag = dep.lagDays || 0;
         let constraint: number;
         switch (dep.type) {
-          case 'SS': constraint = succLS - lag; break;
-          case 'FF': constraint = succLF - lag; break;
-          case 'SF': constraint = succLS - lag + (succTask?.durationDays ?? 0); break;
+          case 'SS':
+            constraint = succLS - lag;
+            break;
+          case 'FF':
+            constraint = succLF - lag;
+            break;
+          case 'SF':
+            constraint = succLS - lag + (succTask?.durationDays ?? 0);
+            break;
           case 'FS':
-          default: constraint = succLS - lag;
+          default:
+            constraint = succLS - lag;
         }
         lf = Math.min(lf, constraint);
       }

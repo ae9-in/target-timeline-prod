@@ -21,7 +21,11 @@ import { generatePdfReport } from '../reports/pdf-generator';
 import { TargetsService } from './targets.service';
 import { GanttService } from './gantt.service';
 import { CreateTargetDto, UpdateTargetDto } from './dto/create-target.dto';
-import { CreateDependencyDto, ScheduleUpdateDto, BaselineLabelDto } from './dto/gantt.dto';
+import {
+  CreateDependencyDto,
+  ScheduleUpdateDto,
+  BaselineLabelDto,
+} from './dto/gantt.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermission } from '../rbac/require-permission.decorator';
@@ -45,7 +49,12 @@ export class TargetsController {
     @Req() req?: any,
   ) {
     const userVerticals = req.user.verticalScope || [];
-    return this.ganttService.getGanttData(userVerticals, vertical, groupBy, locationId);
+    return this.ganttService.getGanttData(
+      userVerticals,
+      vertical,
+      groupBy,
+      locationId,
+    );
   }
 
   @Get('critical-path')
@@ -83,7 +92,13 @@ export class TargetsController {
     @Req() req?: any,
   ) {
     const userVerticals = req.user.verticalScope || [];
-    return this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId, subDepartmentId });
+    return this.targetsService.findAll(userVerticals, {
+      vertical,
+      owner,
+      status,
+      locationId,
+      subDepartmentId,
+    });
   }
 
   @Get('export/pdf')
@@ -97,8 +112,13 @@ export class TargetsController {
     @Res() res: any,
   ) {
     const userVerticals = req.user.verticalScope || [];
-    const targets = await this.targetsService.findAll(userVerticals, { vertical, owner, status, locationId });
-    
+    const targets = await this.targetsService.findAll(userVerticals, {
+      vertical,
+      owner,
+      status,
+      locationId,
+    });
+
     const counts = targets.reduce(
       (acc, t) => {
         const s = t.ragStatus?.toUpperCase();
@@ -107,10 +127,13 @@ export class TargetsController {
         else if (s === 'RED') acc.RED++;
         return acc;
       },
-      { GREEN: 0, AMBER: 0, RED: 0 }
+      { GREEN: 0, AMBER: 0, RED: 0 },
     );
 
-    const verticalBreakdown: Record<string, { GREEN: number; AMBER: number; RED: number }> = {};
+    const verticalBreakdown: Record<
+      string,
+      { GREEN: number; AMBER: number; RED: number }
+    > = {};
     for (const t of targets) {
       const v = t.vertical || 'Unassigned';
       if (!verticalBreakdown[v]) {
@@ -122,7 +145,7 @@ export class TargetsController {
       else if (s === 'RED') verticalBreakdown[v].RED++;
     }
 
-    const pdfTargets = targets.map(t => ({
+    const pdfTargets = targets.map((t) => ({
       name: t.name,
       vertical: t.vertical,
       owner: t.owner,
@@ -140,15 +163,21 @@ export class TargetsController {
     const tempPath = path.join(tempDir, `export_${Date.now()}.pdf`);
 
     try {
-      await generatePdfReport({
-        generatedAt: new Date(),
-        counts,
-        verticalBreakdown,
-        targets: pdfTargets,
-      }, tempPath);
+      await generatePdfReport(
+        {
+          generatedAt: new Date(),
+          counts,
+          verticalBreakdown,
+          targets: pdfTargets,
+        },
+        tempPath,
+      );
 
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename=targets_export.pdf');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename=targets_export.pdf',
+      );
 
       const fileStream = fs.createReadStream(tempPath);
       fileStream.pipe(res);
@@ -174,7 +203,11 @@ export class TargetsController {
 
   @Post()
   @RequirePermission('target', 'create')
-  async create(@Body() createTargetDto: CreateTargetDto, @Req() req?: any, @Ip() ip?: string) {
+  async create(
+    @Body() createTargetDto: CreateTargetDto,
+    @Req() req?: any,
+    @Ip() ip?: string,
+  ) {
     const userId = req.user.sub;
     return this.targetsService.create(createTargetDto, userId, ip || 'Unknown');
   }
@@ -191,7 +224,14 @@ export class TargetsController {
     const userId = req.user.sub;
     const userName = req.user.name || 'Unknown';
     const roles = req.user.roles || [];
-    return this.targetsService.update(id, updateTargetDto, userId, userName, roles, ip || 'Unknown');
+    return this.targetsService.update(
+      id,
+      updateTargetDto,
+      userId,
+      userName,
+      roles,
+      ip || 'Unknown',
+    );
   }
 
   @Delete(':id')
@@ -259,6 +299,14 @@ export class TargetsController {
     const userName = req.user.name || 'Unknown';
     const userVerticals = req.user.verticalScope || [];
     const roles = req.user.roles || [];
-    return this.ganttService.scheduleUpdate(id, dto, userId, userName, userVerticals, roles, ip || 'Unknown');
+    return this.ganttService.scheduleUpdate(
+      id,
+      dto,
+      userId,
+      userName,
+      userVerticals,
+      roles,
+      ip || 'Unknown',
+    );
   }
 }

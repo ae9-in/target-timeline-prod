@@ -50,14 +50,17 @@ export class DashboardService {
     return dashboard;
   }
 
-  async createDashboard(userId: string, data: {
-    name: string;
-    description?: string;
-    icon?: string;
-    color?: string;
-    isDefault?: boolean;
-    isShared?: boolean;
-  }) {
+  async createDashboard(
+    userId: string,
+    data: {
+      name: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      isDefault?: boolean;
+      isShared?: boolean;
+    },
+  ) {
     // If this is set as default, clear other defaults for this user
     if (data.isDefault) {
       await this.prisma.dashboard.updateMany({
@@ -74,18 +77,23 @@ export class DashboardService {
     });
   }
 
-  async updateDashboard(id: string, userId: string, data: Partial<{
-    name: string;
-    description: string;
-    icon: string;
-    color: string;
-    isDefault: boolean;
-    isShared: boolean;
-  }>) {
+  async updateDashboard(
+    id: string,
+    userId: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      icon: string;
+      color: string;
+      isDefault: boolean;
+      isShared: boolean;
+    }>,
+  ) {
     const dashboard = await this.prisma.dashboard.findFirst({
       where: { id, createdBy: userId },
     });
-    if (!dashboard) throw new NotFoundException('Dashboard not found or not owned by you');
+    if (!dashboard)
+      throw new NotFoundException('Dashboard not found or not owned by you');
 
     if (data.isDefault) {
       await this.prisma.dashboard.updateMany({
@@ -101,7 +109,8 @@ export class DashboardService {
     const dashboard = await this.prisma.dashboard.findFirst({
       where: { id, createdBy: userId },
     });
-    if (!dashboard) throw new NotFoundException('Dashboard not found or not owned by you');
+    if (!dashboard)
+      throw new NotFoundException('Dashboard not found or not owned by you');
     return this.prisma.dashboard.delete({ where: { id } });
   }
 
@@ -151,14 +160,21 @@ export class DashboardService {
 
   // ─── Widget CRUD ───────────────────────────────────────────────────────────
 
-  async addWidget(dashboardId: string, userId: string, data: {
-    type: string;
-    title: string;
-    config: Record<string, any>;
-    layout: { x: number; y: number; w: number; h: number };
-  }) {
+  async addWidget(
+    dashboardId: string,
+    userId: string,
+    data: {
+      type: string;
+      title: string;
+      config: Record<string, any>;
+      layout: { x: number; y: number; w: number; h: number };
+    },
+  ) {
     const dashboard = await this.prisma.dashboard.findFirst({
-      where: { id: dashboardId, OR: [{ createdBy: userId }, { isShared: true }] },
+      where: {
+        id: dashboardId,
+        OR: [{ createdBy: userId }, { isShared: true }],
+      },
       include: { _count: { select: { widgets: true } } },
     });
     if (!dashboard) throw new NotFoundException('Dashboard not found');
@@ -175,26 +191,43 @@ export class DashboardService {
     });
   }
 
-  async updateWidget(widgetId: string, userId: string, data: Partial<{
-    title: string;
-    config: Record<string, any>;
-    layout: { x: number; y: number; w: number; h: number };
-    isLocked: boolean;
-    isHidden: boolean;
-  }>) {
+  async updateWidget(
+    widgetId: string,
+    userId: string,
+    data: Partial<{
+      title: string;
+      config: Record<string, any>;
+      layout: { x: number; y: number; w: number; h: number };
+      isLocked: boolean;
+      isHidden: boolean;
+    }>,
+  ) {
     const widget = await this.prisma.dashboardWidget.findFirst({
-      where: { id: widgetId, dashboard: { OR: [{ createdBy: userId }, { isShared: true }] } },
+      where: {
+        id: widgetId,
+        dashboard: { OR: [{ createdBy: userId }, { isShared: true }] },
+      },
     });
     if (!widget) throw new NotFoundException('Widget not found');
-    return this.prisma.dashboardWidget.update({ where: { id: widgetId }, data: data as any });
+    return this.prisma.dashboardWidget.update({
+      where: { id: widgetId },
+      data: data as any,
+    });
   }
 
-  async updateWidgetLayouts(dashboardId: string, userId: string, layouts: Array<{
-    id: string;
-    layout: { x: number; y: number; w: number; h: number };
-  }>) {
+  async updateWidgetLayouts(
+    dashboardId: string,
+    userId: string,
+    layouts: Array<{
+      id: string;
+      layout: { x: number; y: number; w: number; h: number };
+    }>,
+  ) {
     const dashboard = await this.prisma.dashboard.findFirst({
-      where: { id: dashboardId, OR: [{ createdBy: userId }, { isShared: true }] },
+      where: {
+        id: dashboardId,
+        OR: [{ createdBy: userId }, { isShared: true }],
+      },
     });
     if (!dashboard) throw new NotFoundException('Dashboard not found');
 
@@ -203,15 +236,18 @@ export class DashboardService {
         this.prisma.dashboardWidget.update({
           where: { id: item.id },
           data: { layout: item.layout },
-        })
-      )
+        }),
+      ),
     );
     return { success: true };
   }
 
   async deleteWidget(widgetId: string, userId: string) {
     const widget = await this.prisma.dashboardWidget.findFirst({
-      where: { id: widgetId, dashboard: { OR: [{ createdBy: userId }, { isShared: true }] } },
+      where: {
+        id: widgetId,
+        dashboard: { OR: [{ createdBy: userId }, { isShared: true }] },
+      },
     });
     if (!widget) throw new NotFoundException('Widget not found');
     return this.prisma.dashboardWidget.delete({ where: { id: widgetId } });
@@ -219,7 +255,10 @@ export class DashboardService {
 
   async duplicateWidget(widgetId: string, userId: string) {
     const widget = await this.prisma.dashboardWidget.findFirst({
-      where: { id: widgetId, dashboard: { OR: [{ createdBy: userId }, { isShared: true }] } },
+      where: {
+        id: widgetId,
+        dashboard: { OR: [{ createdBy: userId }, { isShared: true }] },
+      },
     });
     if (!widget) throw new NotFoundException('Widget not found');
 
@@ -229,7 +268,10 @@ export class DashboardService {
         type: widget.type,
         title: `${widget.title} (Copy)`,
         config: widget.config as any,
-        layout: { ...(widget.layout as any), y: (widget.layout as any).y + (widget.layout as any).h },
+        layout: {
+          ...(widget.layout as any),
+          y: (widget.layout as any).y + (widget.layout as any).h,
+        },
         isLocked: false,
         isHidden: false,
         order: widget.order + 1,
@@ -245,7 +287,11 @@ export class DashboardService {
     });
   }
 
-  async createDashboardFromTemplate(templateId: string, userId: string, name?: string) {
+  async createDashboardFromTemplate(
+    templateId: string,
+    userId: string,
+    name?: string,
+  ) {
     const template = await this.prisma.dashboardTemplate.findUnique({
       where: { id: templateId },
     });
@@ -287,7 +333,11 @@ export class DashboardService {
     });
   }
 
-  async createSavedFilter(userId: string, name: string, config: Record<string, any>) {
+  async createSavedFilter(
+    userId: string,
+    name: string,
+    config: Record<string, any>,
+  ) {
     return this.prisma.savedFilter.create({
       data: { userId, name, config },
     });

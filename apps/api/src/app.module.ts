@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { TinkerService } from './utils/tinker.service';
 import { AuthModule } from './auth/auth.module';
 import { RbacModule } from './rbac/rbac.module';
 import { TargetsModule } from './targets/targets.module';
@@ -17,14 +18,15 @@ import { SubDepartmentsModule } from './sub-departments/sub-departments.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EmployeesModule } from './employees/employees.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     AuthModule,
     RbacModule,
     TargetsModule,
@@ -40,6 +42,6 @@ import { EmployeesModule } from './employees/employees.module';
     EmployeesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, TinkerService],
 })
 export class AppModule {}

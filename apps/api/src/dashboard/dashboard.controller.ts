@@ -1,5 +1,13 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -37,7 +45,11 @@ export class DashboardController {
     @Body() body: { name?: string },
     @Req() req: any,
   ) {
-    return this.dashboardService.createDashboardFromTemplate(templateId, req.user.sub, body.name);
+    return this.dashboardService.createDashboardFromTemplate(
+      templateId,
+      req.user.sub,
+      body.name,
+    );
   }
 
   @Post(':id/clone')
@@ -67,13 +79,25 @@ export class DashboardController {
   // ─── Widget CRUD ────────────────────────────────────────────────────────────
 
   @Post(':id/widgets')
-  addWidget(@Param('id') dashboardId: string, @Body() body: any, @Req() req: any) {
+  addWidget(
+    @Param('id') dashboardId: string,
+    @Body() body: any,
+    @Req() req: any,
+  ) {
     return this.dashboardService.addWidget(dashboardId, req.user.sub, body);
   }
 
   @Patch(':id/widgets/layouts')
-  updateLayouts(@Param('id') dashboardId: string, @Body() body: { layouts: any[] }, @Req() req: any) {
-    return this.dashboardService.updateWidgetLayouts(dashboardId, req.user.sub, body.layouts);
+  updateLayouts(
+    @Param('id') dashboardId: string,
+    @Body() body: { layouts: any[] },
+    @Req() req: any,
+  ) {
+    return this.dashboardService.updateWidgetLayouts(
+      dashboardId,
+      req.user.sub,
+      body.layouts,
+    );
   }
 
   @Patch(':id/widgets/:widgetId')
@@ -103,8 +127,15 @@ export class DashboardController {
   }
 
   @Post('saved-filters')
-  createSavedFilter(@Body() body: { name: string; config: any }, @Req() req: any) {
-    return this.dashboardService.createSavedFilter(req.user.sub, body.name, body.config);
+  createSavedFilter(
+    @Body() body: { name: string; config: any },
+    @Req() req: any,
+  ) {
+    return this.dashboardService.createSavedFilter(
+      req.user.sub,
+      body.name,
+      body.config,
+    );
   }
 
   @Delete('saved-filters/:id')

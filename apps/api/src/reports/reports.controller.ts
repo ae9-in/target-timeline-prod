@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Param, UseGuards, Req, Ip, Res, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  UseGuards,
+  Req,
+  Ip,
+  Res,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -41,7 +52,11 @@ export class ReportsController {
     @Ip() ip: string,
   ) {
     const userId = req.user.sub;
-    const report = await this.reportsService.getPdfPath(id, userId, ip || 'Unknown');
+    const report = await this.reportsService.getPdfPath(
+      id,
+      userId,
+      ip || 'Unknown',
+    );
     const pdfPath = report.pdfPath;
 
     if (!fs.existsSync(pdfPath)) {
@@ -52,22 +67,37 @@ export class ReportsController {
       }
 
       const summary = report.summary as any;
-      if (summary && (summary.GREEN !== undefined || summary.counts !== undefined)) {
-        const counts = summary.counts || { GREEN: summary.GREEN, AMBER: summary.AMBER, RED: summary.RED };
-        await generatePdfReport({
-          generatedAt: report.generatedAt,
-          counts,
-          verticalBreakdown: summary.verticalBreakdown || {},
-          targets: summary.targets || [],
-        }, pdfPath);
+      if (
+        summary &&
+        (summary.GREEN !== undefined || summary.counts !== undefined)
+      ) {
+        const counts = summary.counts || {
+          GREEN: summary.GREEN,
+          AMBER: summary.AMBER,
+          RED: summary.RED,
+        };
+        await generatePdfReport(
+          {
+            generatedAt: report.generatedAt,
+            counts,
+            verticalBreakdown: summary.verticalBreakdown || {},
+            targets: summary.targets || [],
+          },
+          pdfPath,
+        );
       } else {
-        throw new NotFoundException('PDF file not found and cannot be regenerated');
+        throw new NotFoundException(
+          'PDF file not found and cannot be regenerated',
+        );
       }
     }
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=weekly_report_${id}.pdf`);
-    
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=weekly_report_${id}.pdf`,
+    );
+
     const fileStream = fs.createReadStream(pdfPath);
     fileStream.pipe(res);
   }

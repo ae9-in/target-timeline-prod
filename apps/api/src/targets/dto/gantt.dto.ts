@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsNumber, IsIn, Min, Max, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsIn,
+  Min,
+  Max,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateDependencyDto {
   @IsString()

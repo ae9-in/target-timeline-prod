@@ -44,7 +44,12 @@ export class AuditController {
 
     return {
       data: logs,
-      meta: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
     };
   }
 }

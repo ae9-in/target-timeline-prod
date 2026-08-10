@@ -1,6 +1,16 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Req, Ip,
-  UseGuards, Query, HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Req,
+  Ip,
+  UseGuards,
+  Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthService } from '../auth/auth.service';
@@ -36,7 +46,6 @@ export class AdminUsersController {
     return this.usersService.findAll({ role, vertical, status });
   }
 
-
   // ─── Invite / create user ────────────────────────────────────────────────────
 
   @Post()
@@ -56,11 +65,17 @@ export class AdminUsersController {
   @RequirePermission('user', 'update')
   async updateUser(
     @Param('id') id: string,
-    @Body() body: { roles?: string[]; verticalScope?: string[]; status?: string },
+    @Body()
+    body: { roles?: string[]; verticalScope?: string[]; status?: string },
     @Req() req: any,
     @Ip() ip: string,
   ) {
-    return this.usersService.updateUser(id, body, req.user.sub, ip || 'Unknown');
+    return this.usersService.updateUser(
+      id,
+      body,
+      req.user.sub,
+      ip || 'Unknown',
+    );
   }
 
   // ─── Resend invite ───────────────────────────────────────────────────────────
@@ -86,8 +101,15 @@ export class AdminUsersController {
     @Req() req: any,
     @Ip() ip: string,
   ) {
-    await this.authService.adminResetPassword(id, req.user.sub, ip || 'Unknown');
-    return { success: true, message: 'User will be required to set a new password on next login.' };
+    await this.authService.adminResetPassword(
+      id,
+      req.user.sub,
+      ip || 'Unknown',
+    );
+    return {
+      success: true,
+      message: 'User will be required to set a new password on next login.',
+    };
   }
 
   // ─── Revoke sessions ─────────────────────────────────────────────────────────
@@ -100,7 +122,11 @@ export class AdminUsersController {
     @Req() req: any,
     @Ip() ip: string,
   ) {
-    return this.authService.revokeUserSessions(id, req.user.sub, ip || 'Unknown');
+    return this.authService.revokeUserSessions(
+      id,
+      req.user.sub,
+      ip || 'Unknown',
+    );
   }
 
   // ─── Disable user ────────────────────────────────────────────────────────────
@@ -122,11 +148,7 @@ export class AdminUsersController {
   @Patch(':id/enable')
   @RequirePermission('user', 'update')
   @HttpCode(HttpStatus.OK)
-  async enableUser(
-    @Param('id') id: string,
-    @Req() req: any,
-    @Ip() ip: string,
-  ) {
+  async enableUser(@Param('id') id: string, @Req() req: any, @Ip() ip: string) {
     await this.authService.enableUser(id, req.user.sub, ip || 'Unknown');
     return { success: true };
   }
@@ -148,7 +170,12 @@ export class AdminUsersController {
     @Req() req: any,
     @Ip() ip: string,
   ) {
-    await this.authService.approveSignUp(id, req.user.sub, ip || 'Unknown', body.role);
+    await this.authService.approveSignUp(
+      id,
+      req.user.sub,
+      ip || 'Unknown',
+      body.role,
+    );
     return { success: true, message: 'User account activated.' };
   }
 
@@ -188,7 +215,11 @@ export class AdminUsersController {
     @Req() req: any,
     @Ip() ip: string,
   ) {
-    return this.authService.approvePendingReset(id, req.user.sub, ip || 'Unknown');
+    return this.authService.approvePendingReset(
+      id,
+      req.user.sub,
+      ip || 'Unknown',
+    );
   }
 
   @Post(':id/reject-reset')
@@ -199,7 +230,11 @@ export class AdminUsersController {
     @Req() req: any,
     @Ip() ip: string,
   ) {
-    await this.authService.rejectPendingReset(id, req.user.sub, ip || 'Unknown');
+    await this.authService.rejectPendingReset(
+      id,
+      req.user.sub,
+      ip || 'Unknown',
+    );
     return { success: true, message: 'Password reset request rejected.' };
   }
 }

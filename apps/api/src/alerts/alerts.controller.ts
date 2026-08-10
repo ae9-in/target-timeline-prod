@@ -1,4 +1,13 @@
-import { Controller, Get, Patch, Param, Query, UseGuards, Req, Ip } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  Ip,
+} from '@nestjs/common';
 import { AlertsService } from './alerts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
@@ -18,10 +27,19 @@ export class AlertsController {
 
   @Patch(':id/acknowledge')
   @RequirePermission('alert', 'update')
-  async acknowledge(@Param('id') id: string, @Req() req?: any, @Ip() ip?: string) {
+  async acknowledge(
+    @Param('id') id: string,
+    @Req() req?: any,
+    @Ip() ip?: string,
+  ) {
     const userId = req.user.sub;
     const userName = req.user.name || req.user.email;
-    return this.alertsService.acknowledge(id, userId, userName, ip || 'Unknown');
+    return this.alertsService.acknowledge(
+      id,
+      userId,
+      userName,
+      ip || 'Unknown',
+    );
   }
 
   @Patch(':id/resolve')

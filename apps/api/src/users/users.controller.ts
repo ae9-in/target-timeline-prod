@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, Ip, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Req,
+  Ip,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,7 +28,11 @@ export class UsersController {
 
   @Post()
   @RequirePermission('user', 'create')
-  async create(@Body() createUserDto: CreateUserDto, @Req() req: any, @Ip() ip: string) {
+  async create(
+    @Body() createUserDto: CreateUserDto,
+    @Req() req: any,
+    @Ip() ip: string,
+  ) {
     const actorId = req.user.sub;
     return this.usersService.create(createUserDto, actorId, ip || 'Unknown');
   }
@@ -32,6 +46,12 @@ export class UsersController {
     @Ip() ip: string,
   ) {
     const actorId = req.user.sub;
-    return this.usersService.updateRoles(id, body.roles, body.verticalScope, actorId, ip || 'Unknown');
+    return this.usersService.updateRoles(
+      id,
+      body.roles,
+      body.verticalScope,
+      actorId,
+      ip || 'Unknown',
+    );
   }
 }

@@ -1,4 +1,9 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateTargetDto, UpdateTargetDto } from './dto/create-target.dto';
 import { calculateRagStatus } from './rag.util';
@@ -28,7 +33,13 @@ export class TargetsService {
 
   async findAll(
     userVerticals: string[],
-    filters: { vertical?: string; owner?: string; status?: string; locationId?: string; subDepartmentId?: string },
+    filters: {
+      vertical?: string;
+      owner?: string;
+      status?: string;
+      locationId?: string;
+      subDepartmentId?: string;
+    },
   ) {
     const where: any = {};
 
@@ -38,7 +49,10 @@ export class TargetsService {
     }
 
     if (filters.vertical) {
-      if (userVerticals.length > 0 && !userVerticals.includes(filters.vertical)) {
+      if (
+        userVerticals.length > 0 &&
+        !userVerticals.includes(filters.vertical)
+      ) {
         return []; // Requested vertical is out of scope
       }
       where.vertical = filters.vertical;
@@ -92,7 +106,9 @@ export class TargetsService {
 
     // Verify scope access
     if (userVerticals.length > 0 && !userVerticals.includes(target.vertical)) {
-      throw new ForbiddenException('Access to this target vertical is restricted');
+      throw new ForbiddenException(
+        'Access to this target vertical is restricted',
+      );
     }
 
     return this.enrichTarget(target);
@@ -104,13 +120,20 @@ export class TargetsService {
     }
 
     if (dto.direction === 'up' && dto.targetValue <= dto.baseline) {
-      throw new BadRequestException('Target value must be greater than baseline value for upward targets');
+      throw new BadRequestException(
+        'Target value must be greater than baseline value for upward targets',
+      );
     }
     if (dto.direction === 'down' && dto.targetValue >= dto.baseline) {
-      throw new BadRequestException('Target value must be less than baseline value for downward targets');
+      throw new BadRequestException(
+        'Target value must be less than baseline value for downward targets',
+      );
     }
 
-    const targetDiff = dto.direction === 'up' ? dto.targetValue - dto.baseline : dto.baseline - dto.targetValue;
+    const targetDiff =
+      dto.direction === 'up'
+        ? dto.targetValue - dto.baseline
+        : dto.baseline - dto.targetValue;
     let actualProgress = 0;
     if (targetDiff !== 0) {
       if (dto.direction === 'up') {
@@ -127,7 +150,8 @@ export class TargetsService {
       const subDept = await this.prisma.subDepartment.findUnique({
         where: { id: dto.subDepartmentId },
       });
-      if (!subDept) throw new BadRequestException('Assigned Sub-Department not found');
+      if (!subDept)
+        throw new BadRequestException('Assigned Sub-Department not found');
     }
 
     const target = await this.prisma.target.create({
@@ -207,41 +231,70 @@ export class TargetsService {
       }
     }
 
-    const newStartDate = dto.startDate ? new Date(dto.startDate) : targetBefore.startDate;
-    const newDeadline = dto.deadline ? new Date(dto.deadline) : targetBefore.deadline;
+    const newStartDate = dto.startDate
+      ? new Date(dto.startDate)
+      : targetBefore.startDate;
+    const newDeadline = dto.deadline
+      ? new Date(dto.deadline)
+      : targetBefore.deadline;
     if (newDeadline <= newStartDate) {
       throw new BadRequestException('Deadline must be after start date');
     }
 
-    const newBaseline = dto.baseline !== undefined ? dto.baseline : targetBefore.baseline;
-    const newTargetValue = dto.targetValue !== undefined ? dto.targetValue : targetBefore.targetValue;
+    const newBaseline =
+      dto.baseline !== undefined ? dto.baseline : targetBefore.baseline;
+    const newTargetValue =
+      dto.targetValue !== undefined
+        ? dto.targetValue
+        : targetBefore.targetValue;
     const newDirection = dto.direction ? dto.direction : targetBefore.direction;
 
     if (newDirection === 'up' && newTargetValue <= newBaseline) {
-      throw new BadRequestException('Target value must be greater than baseline value for upward targets');
+      throw new BadRequestException(
+        'Target value must be greater than baseline value for upward targets',
+      );
     }
     if (newDirection === 'down' && newTargetValue >= newBaseline) {
-      throw new BadRequestException('Target value must be less than baseline value for downward targets');
+      throw new BadRequestException(
+        'Target value must be less than baseline value for downward targets',
+      );
     }
 
-    const targetDiff = newDirection === 'up' ? newTargetValue - newBaseline : newBaseline - newTargetValue;
-    
-    let finalCurrentValue = dto.currentValue !== undefined ? dto.currentValue : targetBefore.currentValue;
-    let finalProgressPct = dto.progressPct !== undefined ? dto.progressPct : targetBefore.progressPct;
+    const targetDiff =
+      newDirection === 'up'
+        ? newTargetValue - newBaseline
+        : newBaseline - newTargetValue;
+
+    let finalCurrentValue =
+      dto.currentValue !== undefined
+        ? dto.currentValue
+        : targetBefore.currentValue;
+    let finalProgressPct =
+      dto.progressPct !== undefined
+        ? dto.progressPct
+        : targetBefore.progressPct;
 
     if (dto.progressPct !== undefined && dto.currentValue === undefined) {
       // Gantt/timeline update sent progressPct directly
       finalProgressPct = dto.progressPct;
       if (targetDiff !== 0) {
         if (newDirection === 'up') {
-          finalCurrentValue = newBaseline + (dto.progressPct / 100) * targetDiff;
+          finalCurrentValue =
+            newBaseline + (dto.progressPct / 100) * targetDiff;
         } else {
-          finalCurrentValue = newBaseline - (dto.progressPct / 100) * targetDiff;
+          finalCurrentValue =
+            newBaseline - (dto.progressPct / 100) * targetDiff;
         }
       } else {
-        finalCurrentValue = dto.progressPct >= 100 ? newTargetValue : newBaseline;
+        finalCurrentValue =
+          dto.progressPct >= 100 ? newTargetValue : newBaseline;
       }
-    } else if (dto.currentValue !== undefined || dto.baseline !== undefined || dto.targetValue !== undefined || dto.direction !== undefined) {
+    } else if (
+      dto.currentValue !== undefined ||
+      dto.baseline !== undefined ||
+      dto.targetValue !== undefined ||
+      dto.direction !== undefined
+    ) {
       // Normal form edit or update sent currentValue, baseline, targetValue or direction
       let actualProgress = 0;
       if (targetDiff !== 0) {
@@ -260,7 +313,8 @@ export class TargetsService {
       const subDept = await this.prisma.subDepartment.findUnique({
         where: { id: dto.subDepartmentId },
       });
-      if (!subDept) throw new BadRequestException('Assigned Sub-Department not found');
+      if (!subDept)
+        throw new BadRequestException('Assigned Sub-Department not found');
     }
 
     // Update target
@@ -280,8 +334,12 @@ export class TargetsService {
         ...(dto.isMilestone !== undefined && { isMilestone: dto.isMilestone }),
         ...(dto.wbsParentId !== undefined && { wbsParentId: dto.wbsParentId }),
         progressPct: finalProgressPct,
-        ...(dto.locationId !== undefined && { locationId: dto.locationId || null }),
-        ...(dto.subDepartmentId !== undefined && { subDepartmentId: dto.subDepartmentId || null }),
+        ...(dto.locationId !== undefined && {
+          locationId: dto.locationId || null,
+        }),
+        ...(dto.subDepartmentId !== undefined && {
+          subDepartmentId: dto.subDepartmentId || null,
+        }),
       },
     });
 

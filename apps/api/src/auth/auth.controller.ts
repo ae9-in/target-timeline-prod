@@ -1,6 +1,15 @@
 import {
-  Controller, Post, Body, Req, Res, UnauthorizedException,
-  HttpCode, HttpStatus, Ip, Headers, UseGuards,
+  Controller,
+  Post,
+  Body,
+  Req,
+  Res,
+  UnauthorizedException,
+  HttpCode,
+  HttpStatus,
+  Ip,
+  Headers,
+  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -42,21 +51,42 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 900000 } }) // 10/15-min for user portal; admin enforced in service
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body() body: { email: string; pass: string; mfaCode?: string; portal?: 'user' | 'admin' | 'admin_user' },
+    @Body()
+    body: {
+      email: string;
+      pass: string;
+      mfaCode?: string;
+      portal?: 'user' | 'admin' | 'admin_user';
+    },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    const portal = body.portal === 'admin' ? 'admin' : (body.portal === 'admin_user' ? 'admin_user' : 'user');
-    const result = await this.authService.validateUser(body.email, body.pass, body.mfaCode, ip, portal);
+    const portal =
+      body.portal === 'admin'
+        ? 'admin'
+        : body.portal === 'admin_user'
+          ? 'admin_user'
+          : 'user';
+    const result = await this.authService.validateUser(
+      body.email,
+      body.pass,
+      body.mfaCode,
+      ip,
+      portal,
+    );
 
     if (result.mfaSetupRequired || result.mfaRequired) {
       return result;
     }
 
     const accessToken = await this.authService.generateAccessToken(result);
-    const refreshToken = await this.authService.generateRefreshToken(result.id, userAgent || 'Unknown', ip);
+    const refreshToken = await this.authService.generateRefreshToken(
+      result.id,
+      userAgent || 'Unknown',
+      ip,
+    );
 
     this.setRefreshTokenCookie(res, refreshToken);
 
@@ -84,9 +114,17 @@ export class AuthController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    const user = await this.authService.completeMfaSetup(body.token, body.code, ip);
+    const user = await this.authService.completeMfaSetup(
+      body.token,
+      body.code,
+      ip,
+    );
     const accessToken = await this.authService.generateAccessToken(user);
-    const refreshToken = await this.authService.generateRefreshToken(user.id, userAgent || 'Unknown', ip);
+    const refreshToken = await this.authService.generateRefreshToken(
+      user.id,
+      userAgent || 'Unknown',
+      ip,
+    );
 
     this.setRefreshTokenCookie(res, refreshToken);
 
@@ -120,7 +158,11 @@ export class AuthController {
     }
 
     try {
-      const result = await this.authService.rotateRefreshToken(refreshToken, userAgent || 'Unknown', ip);
+      const result = await this.authService.rotateRefreshToken(
+        refreshToken,
+        userAgent || 'Unknown',
+        ip,
+      );
       this.setRefreshTokenCookie(res, result.refreshToken);
       return { accessToken: result.accessToken };
     } catch (err) {
@@ -153,13 +195,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async requestReset(@Body() body: { email: string }, @Ip() ip: string) {
     await this.authService.requestPasswordReset(body.email, ip);
-    return { success: true, message: 'If the email exists, a password reset link has been generated.' };
+    return {
+      success: true,
+      message: 'If the email exists, a password reset link has been generated.',
+    };
   }
 
   @Post('reset-password/confirm')
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async confirmReset(@Body() body: { token: string; newPass: string }, @Ip() ip: string) {
+  async confirmReset(
+    @Body() body: { token: string; newPass: string },
+    @Ip() ip: string,
+  ) {
     await this.authService.confirmPasswordReset(body.token, body.newPass, ip);
     return { success: true };
   }
@@ -176,7 +224,12 @@ export class AuthController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    const result = await this.authService.acceptInvite(body.token, body.newPassword, userAgent || 'Unknown', ip);
+    const result = await this.authService.acceptInvite(
+      body.token,
+      body.newPassword,
+      userAgent || 'Unknown',
+      ip,
+    );
     this.setRefreshTokenCookie(res, result.refreshToken);
 
     return {
@@ -191,7 +244,8 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 300000 } }) // 5 per 5 minutes
   @HttpCode(HttpStatus.OK)
   async signUp(
-    @Body() body: { email: string; name: string; password: string; role?: string },
+    @Body()
+    body: { email: string; name: string; password: string; role?: string },
     @Ip() ip: string,
   ) {
     return this.authService.signUp(body, ip || 'Unknown');

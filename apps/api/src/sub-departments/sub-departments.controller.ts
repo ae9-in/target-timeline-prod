@@ -14,7 +14,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { SubDepartmentsService } from './sub-departments.service';
-import { CreateSubDepartmentDto, UpdateSubDepartmentDto } from './dto/sub-department.dto';
+import {
+  CreateSubDepartmentDto,
+  UpdateSubDepartmentDto,
+} from './dto/sub-department.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard } from '../rbac/permissions.guard';
 import { RequirePermission } from '../rbac/require-permission.decorator';

@@ -115,6 +115,13 @@ model Target {
   baselines       TargetBaseline[]
   wbsParent       Target?           @relation("WbsChildren", fields: [wbsParentId], references: [id])
   wbsChildren     Target[]          @relation("WbsChildren")
+
+  @@index([vertical])
+  @@index([owner])
+  @@index([locationId])
+  @@index([subDepartmentId])
+  @@index([wbsParentId])
+  @@index([deadline])
 }
 
 
@@ -126,6 +133,9 @@ model TargetDependency {
   lagDays       Int     @default(0)
   predecessor   Target  @relation("PredecessorDeps", fields: [predecessorId], references: [id], onDelete: Cascade)
   successor     Target  @relation("SuccessorDeps", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@index([predecessorId])
+  @@index([successorId])
 }
 
 model TargetBaseline {
@@ -136,6 +146,8 @@ model TargetBaseline {
   baselineEnd   DateTime
   capturedAt    DateTime @default(now())
   label         String
+
+  @@index([targetId])
 }
 
 model TargetSnapshot {
@@ -145,6 +157,9 @@ model TargetSnapshot {
   currentValue Float
   ragStatus    String
   capturedAt   DateTime @default(now())
+
+  @@index([targetId])
+  @@index([capturedAt])
 }
 
 model Alert {
@@ -157,6 +172,9 @@ model Alert {
   resolvedAt     DateTime?
   acknowledgedAt DateTime?
   acknowledgedBy String?
+
+  @@index([targetId])
+  @@index([resolvedAt])
 }
 
 model AuditLog {
@@ -169,6 +187,9 @@ model AuditLog {
   after        Json?
   ip           String?
   createdAt    DateTime @default(now())
+
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
 }
 
 model RefreshToken {
@@ -181,6 +202,8 @@ model RefreshToken {
   revokedAt  DateTime?
   userAgent  String?
   ipAddress  String?
+
+  @@index([userId])
 }
 
 model WeeklyReport {
@@ -220,6 +243,8 @@ model DashboardWidget {
   order       Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([dashboardId])
 }
 
 model DashboardTemplate {
@@ -240,6 +265,8 @@ model SavedFilter {
   userId    String
   config    Json     // { department, location, dateRange, status, priority, owner, etc. }
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model UserDashboardPreference {
@@ -252,6 +279,7 @@ model UserDashboardPreference {
   customLayout Json?     // Per-user layout override
 
   @@unique([userId, dashboardId])
+  @@index([dashboardId])
 }
 
 model Employee {
@@ -263,4 +291,7 @@ model Employee {
   locationId     String
   location       Location    @relation(fields: [locationId], references: [id])
   createdAt      DateTime    @default(now())
+
+  @@index([departmentId])
+  @@index([locationId])
 }

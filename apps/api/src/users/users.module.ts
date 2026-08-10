@@ -13,4 +13,3 @@ import { RbacModule } from '../rbac/rbac.module';
   exports: [UsersService],
 })
 export class UsersModule {}
-

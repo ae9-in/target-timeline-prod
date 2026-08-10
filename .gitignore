@@ -115,3 +115,6 @@ apps/api/src/generated/
 *.sqlite
 *.sqlite3
 
+# Vercel
+.vercel/
+

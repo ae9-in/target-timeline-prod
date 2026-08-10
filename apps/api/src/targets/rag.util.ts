@@ -23,7 +23,8 @@ export function calculateRagStatus(
   }
 
   // Avoid division by zero
-  const targetDiff = direction === 'up' ? targetValue - baseline : baseline - targetValue;
+  const targetDiff =
+    direction === 'up' ? targetValue - baseline : baseline - targetValue;
   let actualProgress = 0;
 
   if (targetDiff !== 0) {
@@ -45,7 +46,7 @@ export function calculateRagStatus(
     ragStatus = actualProgress >= 1 ? 'GREEN' : 'RED';
   } else {
     const gap = expectedProgress - actualProgress;
-    if (gap > 0.20) {
+    if (gap > 0.2) {
       ragStatus = 'RED';
     } else if (gap > 0.05) {
       ragStatus = 'AMBER';

@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
 
@@ -35,12 +39,16 @@ export class DepartmentsService {
       where: { name: dto.name },
     });
     if (existing) {
-      throw new BadRequestException('A department with this name already exists');
+      throw new BadRequestException(
+        'A department with this name already exists',
+      );
     }
 
     // If location is provided, verify it exists
     if (dto.locationId) {
-      const loc = await this.prisma.location.findUnique({ where: { id: dto.locationId } });
+      const loc = await this.prisma.location.findUnique({
+        where: { id: dto.locationId },
+      });
       if (!loc) throw new BadRequestException('Assigned location not found');
     }
 
@@ -63,7 +71,9 @@ export class DepartmentsService {
   }
 
   async update(id: string, dto: UpdateDepartmentDto) {
-    const deptBefore = await this.prisma.department.findUnique({ where: { id } });
+    const deptBefore = await this.prisma.department.findUnique({
+      where: { id },
+    });
     if (!deptBefore) throw new NotFoundException('Department not found');
 
     if (dto.name && dto.name !== deptBefore.name) {
@@ -71,12 +81,16 @@ export class DepartmentsService {
         where: { name: dto.name },
       });
       if (existing) {
-        throw new BadRequestException('A department with this name already exists');
+        throw new BadRequestException(
+          'A department with this name already exists',
+        );
       }
     }
 
     if (dto.locationId) {
-      const loc = await this.prisma.location.findUnique({ where: { id: dto.locationId } });
+      const loc = await this.prisma.location.findUnique({
+        where: { id: dto.locationId },
+      });
       if (!loc) throw new BadRequestException('Assigned location not found');
     }
 
@@ -111,10 +125,34 @@ export class DepartmentsService {
     if (count > 0) return;
 
     const defaults = [
-      { name: 'Sales', code: 'SLS', color: '#3b82f6', description: 'Sales and Business Development vertical', isSystem: true },
-      { name: 'Production', code: 'PRD', color: '#10b981', description: 'Manufacturing and Production vertical', isSystem: true },
-      { name: 'HR', code: 'HRM', color: '#f59e0b', description: 'Human Resources and Recruitment', isSystem: true },
-      { name: 'Planning', code: 'PLN', color: '#8b5cf6', description: 'Strategic Planning and Analysis', isSystem: true },
+      {
+        name: 'Sales',
+        code: 'SLS',
+        color: '#3b82f6',
+        description: 'Sales and Business Development vertical',
+        isSystem: true,
+      },
+      {
+        name: 'Production',
+        code: 'PRD',
+        color: '#10b981',
+        description: 'Manufacturing and Production vertical',
+        isSystem: true,
+      },
+      {
+        name: 'HR',
+        code: 'HRM',
+        color: '#f59e0b',
+        description: 'Human Resources and Recruitment',
+        isSystem: true,
+      },
+      {
+        name: 'Planning',
+        code: 'PLN',
+        color: '#8b5cf6',
+        description: 'Strategic Planning and Analysis',
+        isSystem: true,
+      },
     ];
 
     for (const d of defaults) {

@@ -51,7 +51,11 @@ export class DepartmentsController {
   /** PATCH /departments/:id — SUPER_ADMIN only */
   @Patch(':id')
   @RequirePermission('department', 'update')
-  async update(@Param('id') id: string, @Body() dto: UpdateDepartmentDto, @Req() req: any) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDepartmentDto,
+    @Req() req: any,
+  ) {
     this.requireAdmin(req);
     return this.departmentsService.update(id, dto);
   }
@@ -71,4 +75,3 @@ export class DepartmentsController {
     }
   }
 }
-

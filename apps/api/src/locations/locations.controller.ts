@@ -12,7 +12,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { LocationsService } from './locations.service';
-import { CreateLocationDto, UpdateLocationDto, UpdateLocationStatusDto } from './dto/location.dto';
+import {
+  CreateLocationDto,
+  UpdateLocationDto,
+  UpdateLocationStatusDto,
+} from './dto/location.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('locations')
@@ -43,14 +47,22 @@ export class LocationsController {
 
   /** PATCH /locations/:id — SUPER_ADMIN only */
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateLocationDto, @Req() req: any) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateLocationDto,
+    @Req() req: any,
+  ) {
     this.requireAdmin(req);
     return this.locationsService.update(id, dto);
   }
 
   /** PATCH /locations/:id/status — SUPER_ADMIN only — activate/deactivate */
   @Patch(':id/status')
-  async setStatus(@Param('id') id: string, @Body() dto: UpdateLocationStatusDto, @Req() req: any) {
+  async setStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateLocationStatusDto,
+    @Req() req: any,
+  ) {
     this.requireAdmin(req);
     return this.locationsService.setStatus(id, dto.status);
   }

@@ -13,7 +13,12 @@ export function getJwtKeys(): { privateKey: string; publicKey: string } {
   const envPrivate = process.env.JWT_PRIVATE_KEY;
   const envPublic = process.env.JWT_PUBLIC_KEY;
 
-  if (envPrivate && envPublic && envPrivate.trim() !== '' && envPrivate.includes('PRIVATE KEY')) {
+  if (
+    envPrivate &&
+    envPublic &&
+    envPrivate.trim() !== '' &&
+    envPrivate.includes('PRIVATE KEY')
+  ) {
     cachedPrivateKey = envPrivate.replace(/\\n/g, '\n');
     cachedPublicKey = envPublic.replace(/\\n/g, '\n');
     return { privateKey: cachedPrivateKey, publicKey: cachedPublicKey };
@@ -28,7 +33,9 @@ export function getJwtKeys(): { privateKey: string; publicKey: string } {
     return { privateKey: cachedPrivateKey, publicKey: cachedPublicKey };
   }
 
-  console.log('JWT keys not found. Generating fresh 2048-bit RSA key pair for development...');
+  console.log(
+    'JWT keys not found. Generating fresh 2048-bit RSA key pair for development...',
+  );
   const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 2048,
     publicKeyEncoding: {
@@ -44,9 +51,14 @@ export function getJwtKeys(): { privateKey: string; publicKey: string } {
   try {
     fs.writeFileSync(privateKeyPath, privateKey);
     fs.writeFileSync(publicKeyPath, publicKey);
-    console.log(`RSA Key Pair generated and saved to ${privateKeyPath} and ${publicKeyPath}`);
+    console.log(
+      `RSA Key Pair generated and saved to ${privateKeyPath} and ${publicKeyPath}`,
+    );
   } catch (err) {
-    console.warn('Failed to write generated JWT keys to disk, caching in memory only.', err);
+    console.warn(
+      'Failed to write generated JWT keys to disk, caching in memory only.',
+      err,
+    );
   }
 
   cachedPrivateKey = privateKey;

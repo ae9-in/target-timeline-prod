@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma.service';
 import * as fs from 'fs';
@@ -17,13 +22,18 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService,
   ) {
     const isVercel = !!process.env.VERCEL;
-    this.reportsDir = isVercel ? '/tmp/reports' : path.join(process.cwd(), 'reports');
+    this.reportsDir = isVercel
+      ? '/tmp/reports'
+      : path.join(process.cwd(), 'reports');
     try {
       if (!fs.existsSync(this.reportsDir)) {
         fs.mkdirSync(this.reportsDir, { recursive: true });
       }
     } catch (err) {
-      this.logger.error(`Could not create reports directory: ${this.reportsDir}`, err);
+      this.logger.error(
+        `Could not create reports directory: ${this.reportsDir}`,
+        err,
+      );
     }
   }
 
@@ -31,24 +41,39 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Initializing in-memory background jobs...');
 
     // 1. Schedule Nightly Snapshots (every 24 hours)
-    const snapshotInterval = setInterval(() => {
-      this.logger.log('Running scheduled Nightly Snapshots...');
-      this.runNightlySnapshots().catch(err => this.logger.error('Error running snapshots', err));
-    }, 24 * 60 * 60 * 1000);
+    const snapshotInterval = setInterval(
+      () => {
+        this.logger.log('Running scheduled Nightly Snapshots...');
+        this.runNightlySnapshots().catch((err) =>
+          this.logger.error('Error running snapshots', err),
+        );
+      },
+      24 * 60 * 60 * 1000,
+    );
     this.intervals.push(snapshotInterval);
 
     // 2. Schedule Hourly Alert Evaluations (every 1 hour)
-    const alertInterval = setInterval(() => {
-      this.logger.log('Running scheduled Hourly Alert Evaluations...');
-      this.runAlertEvaluation().catch(err => this.logger.error('Error running alert evaluations', err));
-    }, 60 * 60 * 1000);
+    const alertInterval = setInterval(
+      () => {
+        this.logger.log('Running scheduled Hourly Alert Evaluations...');
+        this.runAlertEvaluation().catch((err) =>
+          this.logger.error('Error running alert evaluations', err),
+        );
+      },
+      60 * 60 * 1000,
+    );
     this.intervals.push(alertInterval);
 
     // 3. Schedule Weekly Report Generations (every 7 days)
-    const reportInterval = setInterval(() => {
-      this.logger.log('Running scheduled Weekly Report Generation...');
-      this.runWeeklyReport().catch(err => this.logger.error('Error running weekly report', err));
-    }, 7 * 24 * 60 * 60 * 1000);
+    const reportInterval = setInterval(
+      () => {
+        this.logger.log('Running scheduled Weekly Report Generation...');
+        this.runWeeklyReport().catch((err) =>
+          this.logger.error('Error running weekly report', err),
+        );
+      },
+      7 * 24 * 60 * 60 * 1000,
+    );
     this.intervals.push(reportInterval);
 
     this.logger.log('In-memory background jobs setup complete.');
@@ -86,7 +111,9 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         },
       });
     }
-    this.logger.log(`Nightly snapshots captured for ${targets.length} targets.`);
+    this.logger.log(
+      `Nightly snapshots captured for ${targets.length} targets.`,
+    );
   }
 
   // --- 2. Hourly Alert Evaluation Logic ---
@@ -150,7 +177,9 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
         }
       }
     }
-    this.logger.log(`Alert evaluation completed. Raised: ${alertsRaised}, Resolved: ${alertsResolved}`);
+    this.logger.log(
+      `Alert evaluation completed. Raised: ${alertsRaised}, Resolved: ${alertsResolved}`,
+    );
   }
 
   // --- 3. Weekly Report Generation Logic ---
@@ -161,7 +190,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
 
     const counts = { GREEN: 0, AMBER: 0, RED: 0 };
     const verticalBreakdown: Record<string, typeof counts> = {};
-    
+
     // Initialize with all DB departments
     for (const dept of departments) {
       verticalBreakdown[dept.name] = { GREEN: 0, AMBER: 0, RED: 0 };
@@ -181,7 +210,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       );
 
       counts[status.ragStatus]++;
-      
+
       if (!verticalBreakdown[t.vertical]) {
         verticalBreakdown[t.vertical] = { GREEN: 0, AMBER: 0, RED: 0 };
       }
@@ -203,15 +232,20 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
     const pdfFileName = `${reportId}.pdf`;
     const pdfPath = path.join(this.reportsDir, pdfFileName);
 
-    this.logger.log(`Generating PDF weekly report with pdfkit at ${pdfPath}...`);
+    this.logger.log(
+      `Generating PDF weekly report with pdfkit at ${pdfPath}...`,
+    );
 
     try {
-      await generatePdfReport({
-        generatedAt: now,
-        counts,
-        verticalBreakdown,
-        targets: targetList,
-      }, pdfPath);
+      await generatePdfReport(
+        {
+          generatedAt: now,
+          counts,
+          verticalBreakdown,
+          targets: targetList,
+        },
+        pdfPath,
+      );
       this.logger.log(`PDF Weekly Report successfully written to ${pdfPath}`);
     } catch (error) {
       this.logger.error('Failed to generate PDF report with pdfkit:', error);

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
@@ -9,7 +13,11 @@ export class UsersService {
 
   // ─── List all users (with optional filters) ─────────────────────────────────
 
-  async findAll(filters?: { role?: string; vertical?: string; status?: string }) {
+  async findAll(filters?: {
+    role?: string;
+    vertical?: string;
+    status?: string;
+  }) {
     const where: any = {};
 
     if (filters?.status) {
@@ -77,13 +85,17 @@ export class UsersService {
   // ─── Create user (legacy — kept for backward-compat with existing controller) ─
 
   async create(dto: CreateUserDto, actorId: string, ip: string) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new BadRequestException('User with this email already exists');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const dbRoles = await this.prisma.role.findMany({ where: { name: { in: dto.roles } } });
+    const dbRoles = await this.prisma.role.findMany({
+      where: { name: { in: dto.roles } },
+    });
 
     const user = await this.prisma.user.create({
       data: {
@@ -143,12 +155,17 @@ export class UsersService {
 
     // Roles change
     if (updates.roles !== undefined) {
-      const dbRoles = await this.prisma.role.findMany({ where: { name: { in: updates.roles } } });
+      const dbRoles = await this.prisma.role.findMany({
+        where: { name: { in: updates.roles } },
+      });
       data.roles = { set: dbRoles.map((r) => ({ id: r.id })) };
 
       const beforeRoles = userBefore.roles.map((r) => r.name);
       const afterRoles = updates.roles;
-      if (JSON.stringify([...beforeRoles].sort()) !== JSON.stringify([...afterRoles].sort())) {
+      if (
+        JSON.stringify([...beforeRoles].sort()) !==
+        JSON.stringify([...afterRoles].sort())
+      ) {
         auditActions.push({
           action: 'USER_ROLE_CHANGED',
           before: { roles: beforeRoles },
@@ -161,7 +178,10 @@ export class UsersService {
     if (updates.verticalScope !== undefined) {
       data.verticalScope = updates.verticalScope;
       const beforeScope = userBefore.verticalScope;
-      if (JSON.stringify(beforeScope.sort()) !== JSON.stringify([...updates.verticalScope].sort())) {
+      if (
+        JSON.stringify(beforeScope.sort()) !==
+        JSON.stringify([...updates.verticalScope].sort())
+      ) {
         auditActions.push({
           action: 'USER_VERTICAL_SCOPE_CHANGED',
           before: { verticalScope: beforeScope },
@@ -203,7 +223,13 @@ export class UsersService {
 
   // ─── Legacy: updateRoles (kept for old controller endpoint) ─────────────────
 
-  async updateRoles(id: string, roles: string[], verticalScope: string[], actorId: string, ip: string) {
+  async updateRoles(
+    id: string,
+    roles: string[],
+    verticalScope: string[],
+    actorId: string,
+    ip: string,
+  ) {
     return this.updateUser(id, { roles, verticalScope }, actorId, ip);
   }
 }

@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsHexColor, Length, IsAlpha } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsHexColor,
+  Length,
+  IsAlpha,
+} from 'class-validator';
 
 export class CreateDepartmentDto {
   @IsString()

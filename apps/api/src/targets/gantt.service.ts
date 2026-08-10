@@ -5,8 +5,17 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { CreateDependencyDto, ScheduleUpdateDto, BaselineLabelDto } from './dto/gantt.dto';
-import { hasCycle, computeCriticalPath, CpmTask, CpmDependency } from './cpm.util';
+import {
+  CreateDependencyDto,
+  ScheduleUpdateDto,
+  BaselineLabelDto,
+} from './dto/gantt.dto';
+import {
+  hasCycle,
+  computeCriticalPath,
+  CpmTask,
+  CpmDependency,
+} from './cpm.util';
 import { calculateRagStatus } from './rag.util';
 
 @Injectable()
@@ -25,7 +34,8 @@ export class GanttService {
     const where: any = {};
     if (userVerticals.length > 0) where.vertical = { in: userVerticals };
     if (vertical) {
-      if (userVerticals.length > 0 && !userVerticals.includes(vertical)) return [];
+      if (userVerticals.length > 0 && !userVerticals.includes(vertical))
+        return [];
       where.vertical = vertical;
     }
     if (locationId) {
@@ -64,7 +74,6 @@ export class GanttService {
     });
   }
 
-
   /**
    * Add a dependency from predecessorId → targetId (the target is the successor).
    * Performs cycle detection before persisting.
@@ -81,7 +90,8 @@ export class GanttService {
       this.prisma.target.findUnique({ where: { id: dto.predecessorId } }),
     ]);
     if (!successor) throw new NotFoundException('Successor target not found');
-    if (!predecessor) throw new NotFoundException('Predecessor target not found');
+    if (!predecessor)
+      throw new NotFoundException('Predecessor target not found');
 
     if (dto.predecessorId === targetId) {
       throw new UnprocessableEntityException('A task cannot depend on itself');
@@ -91,7 +101,9 @@ export class GanttService {
     const existingDeps = await this.prisma.targetDependency.findMany({
       select: { predecessorId: true, successorId: true },
     });
-    const allTaskIds = (await this.prisma.target.findMany({ select: { id: true } })).map((t) => t.id);
+    const allTaskIds = (
+      await this.prisma.target.findMany({ select: { id: true } })
+    ).map((t) => t.id);
 
     const proposedDeps = [
       ...existingDeps,
@@ -131,7 +143,9 @@ export class GanttService {
    * Delete a dependency by its own ID.
    */
   async deleteDependency(depId: string, userId: string, ip: string) {
-    const dep = await this.prisma.targetDependency.findUnique({ where: { id: depId } });
+    const dep = await this.prisma.targetDependency.findUnique({
+      where: { id: depId },
+    });
     if (!dep) throw new NotFoundException('Dependency not found');
 
     await this.prisma.targetDependency.delete({ where: { id: depId } });
@@ -213,7 +227,9 @@ export class GanttService {
     userId: string,
     ip: string,
   ) {
-    const target = await this.prisma.target.findUnique({ where: { id: targetId } });
+    const target = await this.prisma.target.findUnique({
+      where: { id: targetId },
+    });
     if (!target) throw new NotFoundException('Target not found');
 
     const baseline = await this.prisma.targetBaseline.create({
@@ -243,7 +259,9 @@ export class GanttService {
    * Get the most recent baseline for a target.
    */
   async getLatestBaseline(targetId: string) {
-    const target = await this.prisma.target.findUnique({ where: { id: targetId } });
+    const target = await this.prisma.target.findUnique({
+      where: { id: targetId },
+    });
     if (!target) throw new NotFoundException('Target not found');
 
     return this.prisma.targetBaseline.findFirst({
@@ -266,41 +284,63 @@ export class GanttService {
     roles: string[],
     ip: string,
   ) {
-    const targetBefore = await this.prisma.target.findUnique({ where: { id: targetId } });
+    const targetBefore = await this.prisma.target.findUnique({
+      where: { id: targetId },
+    });
     if (!targetBefore) throw new NotFoundException('Target not found');
 
     // Enforce vertical scope
-    if (userVerticals.length > 0 && !userVerticals.includes(targetBefore.vertical)) {
-      throw new ForbiddenException('Access to this target vertical is restricted');
+    if (
+      userVerticals.length > 0 &&
+      !userVerticals.includes(targetBefore.vertical)
+    ) {
+      throw new ForbiddenException(
+        'Access to this target vertical is restricted',
+      );
     }
 
     // PLANNING_ANALYST can update schedules; ADMIN and manager-level roles can too
-    const allowedRoles = ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER', 'PRODUCTION_MANAGER', 'HR_MANAGER', 'PLANNING_ANALYST'];
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'ADMIN',
+      'SALES_MANAGER',
+      'PRODUCTION_MANAGER',
+      'HR_MANAGER',
+      'PLANNING_ANALYST',
+    ];
     const hasPermission = roles.some((r) => allowedRoles.includes(r));
     if (!hasPermission) {
-      throw new ForbiddenException('You do not have permission to reschedule targets');
+      throw new ForbiddenException(
+        'You do not have permission to reschedule targets',
+      );
     }
 
     const updateData: any = {};
-    if (dto.startDate !== undefined) updateData.startDate = new Date(dto.startDate);
-    if (dto.deadline !== undefined) updateData.deadline = new Date(dto.deadline);
-    
+    if (dto.startDate !== undefined)
+      updateData.startDate = new Date(dto.startDate);
+    if (dto.deadline !== undefined)
+      updateData.deadline = new Date(dto.deadline);
+
     if (dto.progressPct !== undefined) {
       updateData.progressPct = dto.progressPct;
-      
+
       const baseline = targetBefore.baseline;
       const targetValue = targetBefore.targetValue;
       const direction = targetBefore.direction;
-      const targetDiff = direction === 'up' ? targetValue - baseline : baseline - targetValue;
-      
+      const targetDiff =
+        direction === 'up' ? targetValue - baseline : baseline - targetValue;
+
       if (targetDiff !== 0) {
         if (direction === 'up') {
-          updateData.currentValue = baseline + (dto.progressPct / 100) * targetDiff;
+          updateData.currentValue =
+            baseline + (dto.progressPct / 100) * targetDiff;
         } else {
-          updateData.currentValue = baseline - (dto.progressPct / 100) * targetDiff;
+          updateData.currentValue =
+            baseline - (dto.progressPct / 100) * targetDiff;
         }
       } else {
-        updateData.currentValue = dto.progressPct >= 100 ? targetValue : baseline;
+        updateData.currentValue =
+          dto.progressPct >= 100 ? targetValue : baseline;
       }
     }
 
