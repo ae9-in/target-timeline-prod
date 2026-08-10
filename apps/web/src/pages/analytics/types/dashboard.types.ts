@@ -15,7 +15,16 @@ export type WidgetType =
   | 'progress_card'
   | 'drill_table'
   | 'donut_chart'
-  | 'area_chart';
+  | 'area_chart'
+  // New advanced widgets
+  | 'waterfall'
+  | 'scatter_plot'
+  | 'funnel'
+  | 'speedometer'
+  | 'comparison_matrix'
+  | 'target_cards'
+  | 'rich_text'
+  | 'timeline_snapshot';
 
 export type WidgetCategory =
   | 'KPI & Metrics'

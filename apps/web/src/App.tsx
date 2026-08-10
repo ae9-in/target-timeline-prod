@@ -118,7 +118,7 @@ const MainAppContent: React.FC = () => {
             <Route path="/performance" element={<DepartmentPerformance />} />
             <Route
               path="/analytics"
-              element={hasLeadershipScope ? <Analytics /> : <Navigate to="/dashboard" replace />}
+              element={hasLeadershipScope ? <AnalyticsDashboardPage /> : <Navigate to="/dashboard" replace />}
             />
             <Route path="/alerts" element={<Alerts />} />
             <Route

@@ -118,3 +118,10 @@ apps/api/src/generated/
 # Vercel
 .vercel/
 
+# Verified secure exclude list (completed verification)
+.gemini/
+.agents/
+*.env
+*.key
+*.key.pub
+

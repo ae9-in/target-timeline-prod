@@ -15,6 +15,15 @@ import { ProgressCardWidget } from '../widgets/ProgressCardWidget';
 import { DrillDownTableWidget } from '../widgets/DrillDownTableWidget';
 import { DonutChartWidget } from '../widgets/DonutChartWidget';
 import { AreaChartWidget } from '../widgets/AreaChartWidget';
+// New advanced widgets
+import { WaterfallChartWidget } from '../widgets/WaterfallChartWidget';
+import { ScatterPlotWidget } from '../widgets/ScatterPlotWidget';
+import { FunnelWidget } from '../widgets/FunnelWidget';
+import { SpeedometerWidget } from '../widgets/SpeedometerWidget';
+import { ComparisonMatrixWidget } from '../widgets/ComparisonMatrixWidget';
+import { TargetCardsWidget } from '../widgets/TargetCardsWidget';
+import { RichTextWidget } from '../widgets/RichTextWidget';
+import { TimelineSnapshotWidget } from '../widgets/TimelineSnapshotWidget';
 
 interface Props {
   widget: DashboardWidget;
@@ -42,12 +51,21 @@ const WIDGET_MAP: Record<string, React.ComponentType<{ config: any; title: strin
   drill_table: DrillDownTableWidget,
   donut_chart: DonutChartWidget,
   area_chart: AreaChartWidget,
+  // New advanced widgets
+  waterfall: WaterfallChartWidget,
+  scatter_plot: ScatterPlotWidget,
+  funnel: FunnelWidget,
+  speedometer: SpeedometerWidget,
+  comparison_matrix: ComparisonMatrixWidget,
+  target_cards: TargetCardsWidget,
+  rich_text: RichTextWidget,
+  timeline_snapshot: TimelineSnapshotWidget,
 };
 
 export const WidgetRenderer = memo(({ widget }: Props) => {
   const Component = WIDGET_MAP[widget.type] || WidgetFallback;
   return (
-    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280' }}>Loading...</div>}>
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', fontSize: '12px' }}>Loading...</div>}>
       <Component config={widget.config} title={widget.title} />
     </Suspense>
   );
